@@ -1,0 +1,15 @@
+bleck
+easydict
+flake8
+numpy
+opencv-python
+Pillow
+pylint
+pytorch-lightning
+PyYAML
+tensorboard
+torch
+torchvision
+tqdm
+urllib3
+yacs

@@ -1,0 +1,62 @@
+{
+  // オートセーブ設定。
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  // ファイルの終了時に行末のスペース削除。
+  "files.trimTrailingWhitespace": true,
+  // ファイル保存時に末尾に新しい行を挿入しない。
+  "files.insertFinalNewline": false,
+  // Tab をスペース 4 つに変換
+  "[python]": {
+    // python 言語に対してエディタ設定を上書き
+    // ファイル保存時に実行されるコードアクションの種類
+    "editor.codeActionsOnSave": {
+      // ファイルの保存時に 'インポートを整理' アクションを実行するかどうかを制御。
+      "source.organizeImports": false
+    },
+    // ファイル保存時にフォーマットする。
+    "editor.formatOnSave": true,
+    // 貼り付けた内容がフォーマッターにより自動的にフォーマットされる。
+    "editor.formatOnPaste": false,
+    // エディターで入力後に自動的に行のフォーマットを行うかどうかを制御。
+    "editor.formatOnType": false,
+    // ファイルがこの設定で開かれている時に以下の設定を有効にするかを設定する。
+    "editor.detectIndentation": true,
+    //Tab キー を押すとスペースが挿入される。
+    "editor.insertSpaces": true,
+    // 1つの Tab に対するスペースの数
+    "editor.tabSize": 4
+  },
+  "python.autoComplete.extraPaths": [
+    "/opt/conda/envs/net/lib/python3.8/site-packages"
+  ],
+  // Contrils the OS.
+  // 拡張機能のロード時にターミナルで Python 環境をアクティブにする。
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  // フォーマッタの設定。black を指定する。
+  "python.formatting.provider": "black",
+  "python.formatting.blackPath": "/opt/conda/envs/net/bin/black",
+  "python.formatting.blackArgs": [
+    "--line-length",
+    "88"
+  ],
+  // Lint の設定。
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  // flake8 を有効化する。
+  "python.linting.flake8Enabled": true,
+  "python.linting.flake8Path": "/opt/conda/envs/net/bin/flake8",
+  "python.linting.flake8Args": [
+    "--ignore=E402",
+    "--indent-size=4",
+    "--max-line-length",
+    "88"
+  ],
+  // Docstring のフォーマット
+  //"autoDocstring.docstringFormat": "google",
+  "python.analysis.extraPaths": [
+    "/opt/conda/envs/analysis/Lib/site-packages"
+  ],
+  "python.linting.pylintEnabled": false,
+  // Testの設定。
+}

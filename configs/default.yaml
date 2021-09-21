@@ -1,0 +1,6 @@
+task: 'classify'
+network: 'original'
+model_dir: 'data/model'
+
+train:
+    dataset: ''
