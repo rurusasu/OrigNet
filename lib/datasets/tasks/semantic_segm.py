@@ -12,6 +12,7 @@ import numpy as np
 import torch.utils.data as data
 from PIL import Image
 from torchvision import transforms
+from yacs.config import CfgNode
 
 from datasets.augmentation import augmentation
 from lib.config.config import pth
@@ -36,7 +37,12 @@ class Dataset(data.Dataset):
     """
 
     def __init__(
-        self, data_root: str, split: str, transforms: transforms = None
+        self,
+        cfg: CfgNode,
+        data_root: str,
+        split: str,
+        cls_names: List[str] = None,
+        transforms: transforms = None,
     ) -> None:
         super(Dataset, self).__init__()
 
@@ -47,11 +53,11 @@ class Dataset(data.Dataset):
             ".ppm",
             ".bmp",
             ".pgm",
-            "tif",
-            "tiff",
-            "webp",
+            ".tif",
+            ".tiff",
+            ".webp",
         }
-
+        self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
         # self.img_pths = self._get_img_pths_labels(self.data_root)
         (
@@ -63,6 +69,12 @@ class Dataset(data.Dataset):
         ) = self._get_img_pths_labels(self.data_root)
         self.split = split
         self._transforms = transforms
+
+        # 入力されたクラス名が None 以外でかつ取得したクラスラベルに含まれている場合
+        if cls_names is not None and cls_names in self.classes:
+            self.cls_names = cls_names
+        else:
+            self.cls_names = None
 
     def __getitem__(self, img_id: Type[Union[int, tuple]]) -> tuple:
         """
@@ -76,7 +88,9 @@ class Dataset(data.Dataset):
         """
         if type(img_id) is tuple:
             img_id, height, width = img_id
-        elif type(img_id) is int:
+        elif (
+            type(img_id) is int and "img_width" in self.cfg and "img_height" in self.cfg
+        ):
             height, width = self.cfg.img_width, self.cfg.img_height
         else:
             raise TypeError("Invalid type for variable index")
@@ -106,7 +120,7 @@ class Dataset(data.Dataset):
 
         ret = {
             "img": img,
-            "img_id": img_id,
+            "msk": msk,
             "meta": self.split,
             "target": self.targets[img_id],
             "cls_name": self.classes[self.targets[img_id]],
@@ -165,7 +179,7 @@ class Dataset(data.Dataset):
 
     def _read_img(
         self,
-        imgs: List[Tuple[str, int]],
+        imgs: List[Tuple[str]],
         msks: List[str],
         img_id: int,
     ) -> Image:
@@ -185,7 +199,7 @@ class Dataset(data.Dataset):
         try:
             # 画像を読み込む
             img = Image.open(img_pth)
-            msk = Image.open(msk_pth, mode="L")
+            msk = Image.open(msk_pth)
         except Exception as e:
             print(f"Read image error: {e}")
         else:
@@ -198,6 +212,8 @@ if __name__ == "__main__":
 
     cfg = CN()
     cfg.task = "semantic_segm"
+    cfg.img_width = 200
+    cfg.img_height = 200
     cfg.train = CN()
     cfg.train.dataset = "LinemodTrain"
 

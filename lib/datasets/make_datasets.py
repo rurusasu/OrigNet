@@ -57,6 +57,7 @@ def make_dataset(
     """
     args = DatasetCatalog.get(dataset_name)
     dataset = _dataset_factory(pth, cfg.task)
+    args["cfg"] = cfg
     del args["id"]
 
     # args["data_root"] = os.path.join(pth.DATA_DIR, args["data_root"])

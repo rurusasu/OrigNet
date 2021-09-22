@@ -10,8 +10,7 @@ import numpy as np
 import torch.utils.data as data
 from PIL import Image
 from torchvision import transforms
-
-# from yacs.config import CfgNode
+from yacs.config import CfgNode
 
 from datasets.augmentation import augmentation
 from lib.config.config import pth
@@ -31,7 +30,7 @@ class Dataset(data.Dataset):
     """
 
     def __init__(
-        self, data_root: str, split: str, transforms: transforms = None
+        self, cfg: CfgNode, data_root: str, split: str, transforms: transforms = None
     ) -> None:
         super(Dataset, self).__init__()
 
@@ -46,7 +45,7 @@ class Dataset(data.Dataset):
             ".tiff",
             ".webp",
         }
-
+        self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
         # self.img_pths = self._get_img_pths_labels(self.data_root)
         (
@@ -62,7 +61,9 @@ class Dataset(data.Dataset):
         """data_root の子ディレクトリ名が教師ラベルと仮定"""
         if type(img_id) is tuple:
             img_id, height, width = img_id
-        elif type(img_id) is int:
+        elif (
+            type(img_id) is int and "img_width" in self.cfg and "img_height" in self.cfg
+        ):
             height, width = self.cfg.img_width, self.cfg.img_height
         else:
             raise TypeError("Invalid type for variable index")
@@ -90,7 +91,7 @@ class Dataset(data.Dataset):
 
         ret = {
             "img": img,
-            "img_id": img_id,
+            "msk": [],
             "meta": self.split,
             "target": self.targets[img_id],
             "cls_name": self.classes[self.targets[img_id]],
