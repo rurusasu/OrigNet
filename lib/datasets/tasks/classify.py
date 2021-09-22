@@ -133,10 +133,9 @@ class Dataset(data.Dataset):
                     os.path.isfile(img_pth)
                     and os.path.splitext(img_pth)[1] in self.file_ext
                 ):
-                    # データパスと label_num を格納したタプルを作成
-                    # imgs.append((img_pth, i))
+                    # 画像データパスをリストに格納
                     imgs.append(img_pth)
-                    # label_num のみ格納したリストを作成
+                    # label_num をリストに格納
                     targets.append(i)
 
         return classes, class_to_idx, imgs, targets

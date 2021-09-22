@@ -1,70 +1,36 @@
 import math
 import random
+from typing import Dict
 
 import cv2
 import numpy as np
 from PIL import Image
 
 
-def resize_keep_aspect_ratio(img, imsize, intp_type=cv2.INTER_LINEAR):
-    h, w = img.shape[0], img.shape[1]
-    ratio = imsize / max(h, w)
-    hbeg, wbeg = 0, 0
-    # padding_mask=np.zeros([imsize,imsize],np.uint8)
-    if h > w:
-        hnew = imsize
-        wnew = int(ratio * w)
-        img = cv2.resize(img, (wnew, hnew), interpolation=intp_type)
-        if wnew < imsize:
-            if len(img.shape) == 3:
-                img_pad = np.zeros([imsize, imsize, img.shape[2]], img.dtype)
-            else:
-                img_pad = np.zeros([imsize, imsize], img.dtype)
-            wbeg = int((imsize - wnew) / 2)
-            img_pad[:, wbeg : wbeg + wnew] = img
+def crop_or_padding_to_fixed_size(img, th, tw):
+    h, w, _ = img.shape
+    hpad, wpad = th >= h, tw >= w
 
-            # padding_mask[:,:wbeg]=1
-            # padding_mask[:,wbeg+wnew:]=1
-            img = img_pad
-    else:
-        hnew = int(ratio * h)
-        wnew = imsize
-        img = cv2.resize(img, (wnew, hnew), interpolation=intp_type)
-        if hnew < imsize:
-            if len(img.shape) == 3:
-                img_pad = np.zeros([imsize, imsize, img.shape[2]], img.dtype)
-            else:
-                img_pad = np.zeros([imsize, imsize], img.dtype)
-            hbeg = int((imsize - hnew) / 2)
-            img_pad[hbeg : hbeg + hnew, :] = img
+    hbeg = 0 if hpad else np.random.randint(0, h - th)
+    wbeg = (
+        0 if wpad else np.random.randint(0, w - tw)
+    )  # if pad then [0,wend] will larger than [0,w], indexing it is safe
+    hend = hbeg + th
+    wend = wbeg + tw
 
-            # padding_mask[:,:hbeg]=1
-            # padding_mask[:,hbeg+hnew:]=1
-            img = img_pad
+    img = img[hbeg:hend, wbeg:wend]
 
-    # x_new=x_ori*ratio+wbeg
-    # y_new=y_ori*ratio+hbeg
-    return img, ratio, hbeg, wbeg
+    if hpad or wpad:
+        nh, nw, _ = img.shape
+        new_img = np.zeros([th, tw, 3], dtype=img.dtype)
 
+        hbeg = 0 if not hpad else (th - h) // 2
+        wbeg = 0 if not wpad else (tw - w) // 2
 
-def rotate(img, rot_ang_min, rot_ang_max):
-    h, w = img.shape[0], img.shape[1]
-    degree = np.random.uniform(rot_ang_min, rot_ang_max)
-    R = cv2.getRotationMatrix2D((w / 2, h / 2), degree, 1)
-    img = cv2.warpAffine(
-        img,
-        R,
-        (w, h),
-        flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=0,
-    )
+        new_img[hbeg : hbeg + nh, wbeg : wbeg + nw] = img
 
-    return img
+        img = new_img
 
-
-def flip(img):
-    img = np.flip(img, 1)
     return img
 
 
@@ -108,30 +74,115 @@ def crop_or_padding(img, hratio, wratio):
     return out_img
 
 
-def crop_or_padding_to_fixed_size(img, th, tw):
+def resize_keep_aspect_ratio(img, imsize, intp_type=cv2.INTER_LINEAR):
+    h, w = img.shape[0], img.shape[1]
+    ratio = imsize / max(h, w)
+    hbeg, wbeg = 0, 0
+    # padding_mask=np.zeros([imsize,imsize],np.uint8)
+    if h > w:
+        hnew = imsize
+        wnew = int(ratio * w)
+        img = cv2.resize(img, (wnew, hnew), interpolation=intp_type)
+        if wnew < imsize:
+            if len(img.shape) == 3:
+                img_pad = np.zeros([imsize, imsize, img.shape[2]], img.dtype)
+            else:
+                img_pad = np.zeros([imsize, imsize], img.dtype)
+            wbeg = int((imsize - wnew) / 2)
+            img_pad[:, wbeg : wbeg + wnew] = img
+
+            # padding_mask[:,:wbeg]=1
+            # padding_mask[:,wbeg+wnew:]=1
+            img = img_pad
+    else:
+        hnew = int(ratio * h)
+        wnew = imsize
+        img = cv2.resize(img, (wnew, hnew), interpolation=intp_type)
+        if hnew < imsize:
+            if len(img.shape) == 3:
+                img_pad = np.zeros([imsize, imsize, img.shape[2]], img.dtype)
+            else:
+                img_pad = np.zeros([imsize, imsize], img.dtype)
+            hbeg = int((imsize - hnew) / 2)
+            img_pad[hbeg : hbeg + hnew, :] = img
+
+            # padding_mask[:,:hbeg]=1
+            # padding_mask[:,hbeg+hnew:]=1
+            img = img_pad
+
+    # x_new=x_ori*ratio+wbeg
+    # y_new=y_ori*ratio+hbeg
+    return img, ratio, hbeg, wbeg
+
+
+# <<< higher level api <<<
+def resize_with_crop_or_pad_to_fixed_size(img, ratio):
     h, w, _ = img.shape
-    hpad, wpad = th >= h, tw >= w
+    th, tw = int(math.ceil(h * ratio)), int(math.ceil(w * ratio))
+    img = cv2.resize(img, (tw, th), interpolation=cv2.INTER_LINEAR)
 
-    hbeg = 0 if hpad else np.random.randint(0, h - th)
-    wbeg = (
-        0 if wpad else np.random.randint(0, w - tw)
-    )  # if pad then [0,wend] will larger than [0,w], indexing it is safe
-    hend = hbeg + th
-    wend = wbeg + tw
+    if ratio > 1.0:
+        # crop
+        hbeg, wbeg = np.random.randint(0, th - h), np.random.randint(0, tw - w)
+        result_img = img[hbeg : hbeg + h, wbeg : wbeg + w]
+    else:
+        # padding
+        result_img = np.zeros([h, w, img.shape[2]], img.dtype)
+        hbeg, wbeg = (h - th) // 2, (w - tw) // 2
+        result_img[hbeg : hbeg + th, wbeg : wbeg + tw] = img
 
-    img = img[hbeg:hend, wbeg:wend]
+    return result_img
 
-    if hpad or wpad:
-        nh, nw, _ = img.shape
-        new_img = np.zeros([th, tw, 3], dtype=img.dtype)
 
-        hbeg = 0 if not hpad else (th - h) // 2
-        wbeg = 0 if not wpad else (tw - w) // 2
+def rotate(img, rot_ang_min, rot_ang_max):
+    h, w = img.shape[0], img.shape[1]
+    degree = np.random.uniform(rot_ang_min, rot_ang_max)
+    R = cv2.getRotationMatrix2D((w / 2, h / 2), degree, 1)
+    img = cv2.warpAffine(
+        img,
+        R,
+        (w, h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
 
-        new_img[hbeg : hbeg + nh, wbeg : wbeg + nw] = img
+    return img
 
-        img = new_img
 
+def rotate_instance(img: np.ndarray, msk: np.ndarray, rot_ang_min, rot_ang_max):
+    h, w = img.shape[0], img.shape[1]
+    degree = np.random.uniform(rot_ang_min, rot_ang_max)
+    nonzero = np.nonzero(msk)
+    hs, ws = np.mean(nonzero[0]), np.mean(nonzero[1])
+    # 回転行列を作る．
+    # REF: https://qiita.com/mo256man/items/a32ddf5ddbaaf767d319
+    # arg:
+    #   center: 回転中心．
+    #   angle: 回転角度
+    #   scale: 倍率
+    R = cv2.getRotationMatrix2D((ws, hs), degree, 1)
+    msk = cv2.warpAffine(
+        msk,
+        R,
+        (w, h),
+        flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+    img = cv2.warpAffine(
+        img,
+        R,
+        (w, h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+    return img, msk
+
+
+def flip(img):
+    img = np.flip(img, 1)
     return img
 
 
@@ -180,29 +231,15 @@ def add_noise(image):
     return noisy
 
 
-# <<< higher level api <<<
-def resize_with_crop_or_pad_to_fixed_size(img, ratio):
-    h, w, _ = img.shape
-    th, tw = int(math.ceil(h * ratio)), int(math.ceil(w * ratio))
-    img = cv2.resize(img, (tw, th), interpolation=cv2.INTER_LINEAR)
+def _augmentation(
+    img: np.ndarray, msk: np.ndarray, height: int, width: int
+) -> np.ndarray:
+    foreground = np.sum(msk)
 
-    if ratio > 1.0:
-        # crop
-        hbeg, wbeg = np.random.randint(0, th - h), np.random.randint(0, tw - w)
-        result_img = img[hbeg : hbeg + h, wbeg : wbeg + w]
-    else:
-        # padding
-        result_img = np.zeros([h, w, img.shape[2]], img.dtype)
-        hbeg, wbeg = (h - th) // 2, (w - tw) // 2
-        result_img[hbeg : hbeg + th, wbeg : wbeg + tw] = img
-
-    return result_img
-
-
-def _augmentation(img, height, width):
-
-    # randomly rotate around the center of the instance
-    img = rotate(img, -30, 30)
+    if foreground > 0:
+        # randomly rotate around the center of the instance
+        # img = rotate(img, -30, 30)
+        img, msk = rotate_instance(img, msk, -30, 30)
 
     # randomly crop and resize
     # 1. firstly crop a region which is [scale_min,scale_max]*[height,width],
@@ -212,17 +249,34 @@ def _augmentation(img, height, width):
     # 3. then resize the cropped image to [height, width]
     # (bilinear for image, nearest for mask)
 
-    img = crop_or_padding_to_fixed_size(img, height, width)
+    # msk 画像が存在しない場合
+    else:
+        img = crop_or_padding_to_fixed_size(img, height, width)
 
-    return img
+    return img, msk
 
 
-def augmentation(img: Image.Image, height, width, split):
-    img = np.array(img, dtype=np.uint8)
+def augmentation(
+    imgs: Dict[Image.Image, Image.Image], height: int, width: int, split: str
+) -> Dict[np.ndarray, np.ndarray]:
+    """画像オーギュメンテーションを行う関数
+
+    Args:
+        imgs (Dict[img:PIL.Image, msk:PIL.Image]): 画像とそのマスク画像が保存された辞書
+        height (int): リサイズ時の高さ
+        width (int): リサイズ時の幅
+        split (str):
+
+    Returns:
+        imgs (Dict[img: np.ndarray, msk: np.ndarray]): 画像とそのマスク画像が保存された辞書
+    """
+    img, msk = imgs["img"], imgs["msk"]
+
     if split == "train":
-        img = _augmentation(img, height, width)
+        img, msk = _augmentation(img, msk, height, width)
 
         if np.random.random() < 0.5:
             img = blur_image(img, np.random.choice([3, 5, 7, 9]))
 
-    return img
+    imgs["img"], imgs["msk"] = img, msk
+    return imgs

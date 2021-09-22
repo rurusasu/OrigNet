@@ -6,9 +6,10 @@ sys.path.append("..")
 sys.path.append("../../")
 sys.path.append("../../../")
 
-from typing import Tuple, Type, Union, List
+from typing import Type, Union, List, Dict
 
 import numpy as np
+import torch
 import torch.utils.data as data
 from PIL import Image
 from torchvision import transforms
@@ -16,6 +17,7 @@ from yacs.config import CfgNode
 
 from datasets.augmentation import augmentation
 from lib.config.config import pth
+from lib.utils.base_utils import load_img
 
 
 class Dataset(data.Dataset):
@@ -76,15 +78,19 @@ class Dataset(data.Dataset):
         else:
             self.cls_names = None
 
-    def __getitem__(self, img_id: Type[Union[int, tuple]]) -> tuple:
+    def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
         """
         data_root の子ディレクトリ名が教師ラベルと仮定
 
         Arg:
-           img_id (Type[Union[int, tuple]]): 読みだす画像の番号
+            img_id (Type[Union[int, tuple]]): 読みだす画像の番号
 
         Return:
-            (tuple):
+            ret (Dict["img": torch.tensor,
+                         "msk": torch.tensor,
+                         "meta": str,
+                         "target": int,
+                         "cls_name": str]):
         """
         if type(img_id) is tuple:
             img_id, height, width = img_id
@@ -95,32 +101,29 @@ class Dataset(data.Dataset):
         else:
             raise TypeError("Invalid type for variable index")
 
-        (
-            img,
-            msk,
-        ) = self._read_img(self.imgs, self.msks, img_id)
+        # images (rgb, mask) の読み出し
+        imgs = load_img(self.imgs, img_id, self.msks)
 
         # データ拡張の処理を記述
         if self.split == "train":
-            img = augmentation(img, height, width, self.split)
-        else:
-            img = img
+            imgs = augmentation(imgs, height, width, self.split)
 
         # 画像をテンソルに変換
         img_transforms = transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
+            [transforms.ToTensor(), transforms.Resize((width, height))]
         )
-        img = img_transforms(Image.fromarray(np.ascontiguousarray(img, np.uint8)))
+        for k in imgs.keys():
+            imgs[k] = img_transforms(
+                Image.fromarray(np.ascontiguousarray(imgs[k], np.uint8))
+            )
 
-        # テンソルを用いた変換がある場合は行う．
+        # `transforms`を用いた変換がある場合は行う．
         if self._transforms is not None:
-            img = self._transforms(img)
+            imgs["img"] = self._transforms(imgs["img"])
 
         ret = {
-            "img": img,
-            "msk": msk,
+            "img": imgs["img"],
+            "msk": imgs["msk"],
             "meta": self.split,
             "target": self.targets[img_id],
             "cls_name": self.classes[self.targets[img_id]],
@@ -140,13 +143,14 @@ class Dataset(data.Dataset):
             classes (list): クラス名のリスト
             class_to_idx (dict): クラス名と label_num を対応させる辞書を作成
             imgs (list): データパスと label_num を格納したタプルを作成．
-                             例: [(img_fp1), (img_fp2), ...]
+                             例: [img_fp1, img_fp2, ...]
             targets (list): cls_num を格納したリスト
         """
         # train の子ディレクトリ名を教師ラベルとして設定
         classes = []
         class_to_idx = {}
         imgs = []
+        msks = []
         targets = []
         for i, p in enumerate(glob(os.path.join(data_root, "*"))):
             cls_name = os.path.basename(p.rstrip(os.sep))
@@ -162,48 +166,20 @@ class Dataset(data.Dataset):
                     os.path.isfile(img_pth)
                     and os.path.splitext(img_pth)[1] in self.file_ext
                 ):
-                    # データパスと label_num を格納したタプルを作成
+                    # 画像データパスをリストに格納
                     imgs.append(img_pth)
-                    # label_num のみ格納したリストを作成
+                    # label_num をリストに格納
                     targets.append(i)
-            masks = [
-                msk_pth
-                for msk_pth in glob(os.path.join(p, "masks", "**"), recursive=True)
+
+            for msk_pth in glob(os.path.join(p, "masks", "**"), recursive=True):
                 if (
                     os.path.isfile(msk_pth)
                     and os.path.splitext(msk_pth)[1] in self.file_ext
-                )
-            ]
+                ):
+                    # マスク画像データパスをリストに格納
+                    msks.append(msk_pth)
 
-        return classes, class_to_idx, imgs, targets, masks
-
-    def _read_img(
-        self,
-        imgs: List[Tuple[str]],
-        msks: List[str],
-        img_id: int,
-    ) -> Image:
-        """画像パスのリストから、id で指定された画像を読みだす関数
-
-        Args:
-            igm_pths (list): 画像パスのリスト
-            img_id (int): 読みだすパスの番号
-
-        Return:
-
-        """
-        img_pth = imgs[img_id]
-        msk_pth = msks[img_id]
-        # 画像パスが存在する場合
-        # if os.path.exists(img_pth):
-        try:
-            # 画像を読み込む
-            img = Image.open(img_pth)
-            msk = Image.open(msk_pth)
-        except Exception as e:
-            print(f"Read image error: {e}")
-        else:
-            return img, msk
+        return classes, class_to_idx, imgs, targets, msks
 
 
 if __name__ == "__main__":
