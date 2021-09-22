@@ -1,6 +1,7 @@
 bleck
 easydict
 flake8
+matplotlib
 numpy
 opencv-python
 Pillow

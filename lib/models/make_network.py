@@ -7,6 +7,7 @@ sys.path.append(".")
 sys.path.append("..")
 sys.path.append("../../")
 
+import torch.nn as nn
 from yacs.config import CfgNode
 
 from lib.config.config import pth
@@ -21,7 +22,7 @@ def make_network(cfg: CfgNode):
     Returns:
         [type]: [description]
     """
-    if "train" not in cfg:
+    if "model" not in cfg and "network" not in cfg and "train" not in cfg:
         raise ("The required parameter for `make_network` is not set.")
     name = cfg.model
     if name.find("_"):
@@ -31,8 +32,26 @@ def make_network(cfg: CfgNode):
     spec = importlib.util.spec_from_file_location("__init__", path)
     get_network_fun = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(get_network_fun)
-    network = get_network_fun.get_network(cfg)
-    return network
+    model = get_network_fun.get_network(cfg)
+    if cfg.network == "transfer":
+        model = transfer_network(model, cfg.num_classes)
+    return model
+
+
+def transfer_network(model, num_classes: int):
+    """
+    転移学習用にモデルの全結合層を未学習のものに置き換える関数
+
+    Args:
+        model:
+        num_classes (int): 転移学習時のクラス数
+    """
+    # ネットワークに全結合層が存在する場合
+    if model.fc:
+        num_ftrs = model.fc.in_features
+        fc = nn.Linear(num_ftrs, num_classes)
+        model.fc = fc
+    return model
 
 
 if __name__ == "__main__":
@@ -41,5 +60,6 @@ if __name__ == "__main__":
     cfg.train = CfgNode()
     cfg.train.pretrained = False
 
-    network = make_network(cfg)
-    print(network)
+    model = make_network(cfg)
+    for arc in model:
+        print(arc)

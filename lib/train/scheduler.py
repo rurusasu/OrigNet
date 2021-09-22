@@ -2,6 +2,8 @@ from bisect import bisect_right
 from collections import Counter
 
 import torch
+from torch.optim.lr_scheduler import StepLR
+from yacs.config import CfgNode
 
 
 class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):
@@ -64,15 +66,15 @@ class MultiStepLR(torch.optim.lr_scheduler._LRScheduler):
         ]
 
 
-def make_lr_scheduler(cfg, optimizer):
+def make_lr_scheduler(cfg: CfgNode, optimizer):
     if (
         "train" not in cfg
-        and "warmup" not in cfg.train
+        and "scheduler" not in cfg.train
         and "milestones" not in cfg.train
         and "gamma" not in cfg.train
     ):
         raise ("The required parameter for `make_lr_scheduler` is not set.")
-    if cfg.train.warmup:
+    if cfg.train.scheduler == "warmup":
         scheduler = WarmupMultiStepLR(
             optimizer,
             milestones=cfg.train.milestones,
@@ -81,8 +83,45 @@ def make_lr_scheduler(cfg, optimizer):
             warmup_iters=5,
             warmup_method="linear",
         )
-    else:
+    elif cfg.train.scheduler == "multi_step_lr":
         scheduler = MultiStepLR(
             optimizer, milestones=cfg.train.milestones, gamma=cfg.train.gamma
         )
+    elif cfg.train.scheduler == "step_lr":
+        scheduler = StepLR(optimizer, gamma=cfg.train.gamma, step_size=5)
+    else:
+        raise ("The required parameter for `LR Scheduler` is not set.")
     return scheduler
+
+
+if __name__ == "__main__":
+
+    import torch.nn as nn
+    import torch.optim as optim
+    from matplotlib import pyplot as plt
+
+    cfg = CfgNode()
+    cfg.train = CfgNode()
+    cfg.train.scheduler = "multi_step_lr"
+    cfg.train.milestones = (20, 40, 60, 80)
+    cfg.train.gamma = 0.5
+
+    model = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+    optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=0.01, momentum=0.9)
+
+    scheduler = make_lr_scheduler(cfg, optimizer)
+    data_x = []
+    data_y = []
+    for ep in range(0, 100):
+        scheduler.step()
+
+        data_x.append(ep)
+        data_y.append(optimizer.param_groups[0]["lr"])
+
+    plt.plot(data_x, data_y)
+
+    plt.title("Learning Rate Schedule")
+    plt.xlabel("epoches")
+    plt.ylabel("Learning Rate")
+
+    plt.show()

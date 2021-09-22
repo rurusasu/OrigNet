@@ -31,8 +31,8 @@ def get_network(cfg):
 
     # 転移学習を行う場合
     if "pretrained" in cfg.train and cfg.train.pretrained:
-        model = get_model(num_layers, pretrained=True, num_classes=cfg.num_classes)
+        model = get_model(num_layers, pretrained=True)
     else:
-        model = get_model(num_layers, pretrained=False, num_classes=cfg.num_classes)
+        model = get_model(num_layers, pretrained=False)
 
     return model

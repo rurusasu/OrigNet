@@ -33,7 +33,7 @@ class NetworkWrapper(nn.Module):
             loss = torch.tensor(0).to(batch["img"].device)
             return output, loss, {}
 
-        loss = self.criterion(output, batch["target"])
+        loss = self.criterion(output, batch["cls_num"])
 
         scalar_stats.update({"loss": loss})
         return output, loss, scalar_stats
