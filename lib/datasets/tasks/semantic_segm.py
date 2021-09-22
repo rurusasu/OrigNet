@@ -1,15 +1,13 @@
 import os
 import sys
-from glob import glob
 
 sys.path.append("..")
 sys.path.append("../../")
 sys.path.append("../../../")
 
-from typing import Type, Union, List, Dict
+from typing import Type, Union, Dict, List
 
 import numpy as np
-import torch
 import torch.utils.data as data
 from PIL import Image
 from torchvision import transforms
@@ -17,11 +15,12 @@ from yacs.config import CfgNode
 
 from datasets.augmentation import augmentation
 from lib.config.config import pth
-from lib.utils.base_utils import load_img
+from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
 
 
 class Dataset(data.Dataset):
-    """次のようなデータセットの構成を仮定
+    """data_root の子ディレクトリ名がクラスラベルという仮定のもとデータセットを作成するクラス．
+    データセットは以下のような構成を仮定
     dataset_root
           |
           |- train
@@ -48,27 +47,15 @@ class Dataset(data.Dataset):
     ) -> None:
         super(Dataset, self).__init__()
 
-        self.file_ext = {
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".ppm",
-            ".bmp",
-            ".pgm",
-            ".tif",
-            ".tiff",
-            ".webp",
-        }
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
-        # self.img_pths = self._get_img_pths_labels(self.data_root)
         (
             self.classes,
             self.class_to_idx,
             self.imgs,
             self.targets,
             self.msks,
-        ) = self._get_img_pths_labels(self.data_root)
+        ) = GetImgFpsAndLabels(self.data_root)
         self.split = split
         self._transforms = transforms
 
@@ -80,10 +67,10 @@ class Dataset(data.Dataset):
 
     def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
         """
-        data_root の子ディレクトリ名が教師ラベルと仮定
+        データセット中から `img_id` で指定された番号のデータを返す関数．
 
         Arg:
-            img_id (Type[Union[int, tuple]]): 読みだす画像の番号
+            img_id (Type[Union[int, tuple]]): 読みだすデータの番号
 
         Return:
             ret (Dict["img": torch.tensor,
@@ -102,9 +89,9 @@ class Dataset(data.Dataset):
             raise TypeError("Invalid type for variable index")
 
         # images (rgb, mask) の読み出し
-        imgs = load_img(self.imgs, img_id, self.msks)
+        imgs = LoadImgs(self.imgs, img_id, self.msks)
 
-        # データ拡張の処理を記述
+        # `OpenCV` および `numpy` を用いたデータ拡張
         if self.split == "train":
             imgs = augmentation(imgs, height, width, self.split)
 
@@ -113,9 +100,10 @@ class Dataset(data.Dataset):
             [transforms.ToTensor(), transforms.Resize((width, height))]
         )
         for k in imgs.keys():
-            imgs[k] = img_transforms(
-                Image.fromarray(np.ascontiguousarray(imgs[k], np.uint8))
-            )
+            if len(imgs[k]) > 0:
+                imgs[k] = img_transforms(
+                    Image.fromarray(np.ascontiguousarray(imgs[k], np.uint8))
+                )
 
         # `transforms`を用いた変換がある場合は行う．
         if self._transforms is not None:
@@ -133,53 +121,6 @@ class Dataset(data.Dataset):
     def __len__(self):
         """ディレクトリ内の画像ファイル数を返す関数．"""
         return len(self.imgs)
-
-    def _get_img_pths_labels(self, data_root: str):
-        """指定したディレクトリ内の画像ファイルのパス一覧を取得する．
-
-        Arg:
-            data_root (str): 画像データが格納された親フォルダ
-        Return:
-            classes (list): クラス名のリスト
-            class_to_idx (dict): クラス名と label_num を対応させる辞書を作成
-            imgs (list): データパスと label_num を格納したタプルを作成．
-                             例: [img_fp1, img_fp2, ...]
-            targets (list): cls_num を格納したリスト
-        """
-        # train の子ディレクトリ名を教師ラベルとして設定
-        classes = []
-        class_to_idx = {}
-        imgs = []
-        msks = []
-        targets = []
-        for i, p in enumerate(glob(os.path.join(data_root, "*"))):
-            cls_name = os.path.basename(p.rstrip(os.sep))
-            # クラス名のリストを作成
-            classes.append(cls_name)
-            # クラス名と label_num を対応させる辞書を作成
-            class_to_idx[cls_name] = i
-
-            # クラス名ディレクトリ内の file_ext にヒットするパスを全探索
-            # RGB 画像を探索
-            for img_pth in glob(os.path.join(p, "imgs", "**"), recursive=True):
-                if (
-                    os.path.isfile(img_pth)
-                    and os.path.splitext(img_pth)[1] in self.file_ext
-                ):
-                    # 画像データパスをリストに格納
-                    imgs.append(img_pth)
-                    # label_num をリストに格納
-                    targets.append(i)
-
-            for msk_pth in glob(os.path.join(p, "masks", "**"), recursive=True):
-                if (
-                    os.path.isfile(msk_pth)
-                    and os.path.splitext(msk_pth)[1] in self.file_ext
-                ):
-                    # マスク画像データパスをリストに格納
-                    msks.append(msk_pth)
-
-        return classes, class_to_idx, imgs, targets, msks
 
 
 if __name__ == "__main__":
