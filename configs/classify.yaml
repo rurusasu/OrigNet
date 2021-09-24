@@ -1,0 +1,33 @@
+task: "classify"
+network: "res"
+model: "res_18"
+model_dir: "model"
+train_type: "transfer"
+num_classes: 2
+img_width: 300
+img_height: 300
+resume: True # 追加学習するか
+record_dir: "record"
+ep_iter: -1
+save_ep: 5
+eval_ep: 1
+
+train:
+  epoch: 30
+  dataset: "SampleTrain"
+  batch_size: 30
+  num_workers: 2
+  batch_sampler: "image_size"
+  optim: "adam"
+  criterion: ""
+  lr: 1e-3
+  scheduler: "step_lr"
+  weight_decay: 0.0
+  milestones: (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+  gamma: 0.5
+
+test:
+  dataset: "SampleTest"
+  batch_size: 20
+  num_workers: 2
+  batch_sampler: "image_size"

@@ -20,6 +20,7 @@ class Trainer(object):
         return reduced_losses
 
     def train(self, epoch: int, data_loader, optimizer, recorder):
+        torch.cuda.empty_cache()
         max_iter = len(data_loader)
         self.network.train()
         end = time.time()
@@ -30,10 +31,10 @@ class Trainer(object):
                 iteration += 1
                 recorder.step += 1
 
-                output, loss, loss_stats = self.network(batch)
                 # --------------- #
                 # training stage #
                 # --------------- #
+                output, loss, loss_stats = self.network(batch)
                 if loss.ndim != 0:
                     # 損失の平均値を計算
                     loss = loss.mean()
@@ -86,9 +87,9 @@ class Trainer(object):
         val_loss_stats = {}
         data_size = len(data_loader)
         for batch in tqdm.tqdm(data_loader):
-            for k in batch:
-                if k != "meta" and k != "cls_name":
-                    batch[k] = batch[k].cuda()
+            batch["img"] = batch["img"].cuda()
+            if batch["msk"]:
+                batch["msk"] = batch["msk"].cuda()
 
             with torch.no_grad():
                 output, loss, loss_stats = self.network(batch)
@@ -111,4 +112,4 @@ class Trainer(object):
             val_loss_stats.update(result)
 
         if recorder:
-            recorder.record("val, epoch, val_loss_stats")
+            recorder.record("val", epoch, val_loss_stats)

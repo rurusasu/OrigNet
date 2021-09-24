@@ -8,8 +8,6 @@ from collections import deque, defaultdict
 import torch
 from tensorboardX import SummaryWriter
 
-from lib.config.config import pth
-
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -45,7 +43,8 @@ class Recorder(object):
     def __init__(self, cfg):
         if "record_dir" not in cfg and "resume" not in cfg:
             raise ("The required parameter is not set.")
-        log_dir = os.path.join(pth.DATA_DIR, cfg.task, cfg.record_dir)
+        # log_dir = os.path.join(pth.DATA_DIR, cfg.task, cfg.record_dir)
+        log_dir = cfg.record_dir
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         if not cfg.resume:

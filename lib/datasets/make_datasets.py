@@ -31,9 +31,6 @@ def _dataset_factory(pth, task: str) -> object:
     Returns:
         object: 引数で指定した python ソースファイル内に記述されている関数
     """
-    # module = ".".join(["lib.datasets", data_source, task])
-    # module = ".".join(["lib.datasets.tasks", task])
-    # pth = os.path.join("lib/datasets", data_source, task + ".py")
     pth = os.path.join(pth.LIB_DIR, "datasets", "tasks", task + ".py")
     spec = importlib.util.spec_from_file_location(task, pth)
     my_module = importlib.util.module_from_spec(spec)
@@ -50,7 +47,7 @@ def make_dataset(
 ):
     """`DatasetCatalog` から `dataset_name` を参照し，そこに保存されている情報をもとにデータセットを作成する関数
     Args:
-        cfg (CfgNode): データセット名などのコンフィグ情報
+        cfg (CfgNode): `config` 情報が保存された辞書．
         dataset_name (str): ロードするデータセット名
         transforms (torchvision.transforms): データ拡張に使用するtorchvisionのクラス．default to None.
         is_train (bool): 訓練用データセットか否か．default to True.
@@ -88,7 +85,7 @@ def _make_batch_data_sampler(
     """イタレーションごとにデータセットからデータをサンプリングする際に行う処理を決定する関数
 
     Args:
-        cfg (CfgNode): データセット名などのコンフィグ情報
+        cfg (CfgNode): `config` 情報が保存された辞書．
         sampler (torch.utils.data.sampler.Sampler): データセットからデータをサンプリングする際の処理を自動化するクラス
         batch_size (int): バッチサイズ
         drop_last (bool): サンプリングしきれなかった余りを切り捨てるか
@@ -120,8 +117,19 @@ def _worker_init_fn(worker_id):
 
 
 def make_data_loader(
-    cfg, is_train: bool = True, is_distributed: bool = False, max_iter: int = -1
+    cfg: CfgNode,
+    is_train: bool = True,
+    is_distributed: bool = False,
+    max_iter: int = -1,
 ):
+    """データローダーを作成する関数．
+
+    Args:
+        cfg (CfgNode): `config` 情報が保存された辞書．
+        is_train (bool): 訓練用データセットか否か．default to True.
+        is_distributed (bool): データをシャッフルしたものをテストに使用するか．default to False.
+        max_iter (int): イテレーションの最大値．default to -1.
+    """
     if is_train:
         if (
             "train" not in cfg
