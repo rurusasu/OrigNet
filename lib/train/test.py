@@ -25,15 +25,18 @@ def test(cfg: CfgNode):
 
     trainer = make_trainer(cfg, network)
     evaluator = make_evaluator(cfg)
-    epoch = load_network(
-        network, cfg.model_dir, resume=cfg.resume, epoch=cfg.test.epoch
-    )
+    epoch = load_network(network, cfg.model_dir)
     trainer.val(epoch, val_loader, evaluator)
 
 
 def main(cfg):
     # データの保存先を設定
-    cfg.model_dir = os.path.join(pth.DATA_DIR, "trained", cfg.task, cfg.model, "result")
+    cfg.result_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.model, "result"
+    )
+    cfg.model_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.model, cfg.model_dir
+    )
     test(cfg)
 
 
@@ -49,6 +52,7 @@ if __name__ == "__main__":
     cfg.img_height = 200
     cfg.record_dir = "record"
     cfg.ep_iter = -1
+    cfg.skip_eval = False
     cfg.train = CfgNode()
     cfg.train.criterion = ""
     cfg.test = CfgNode()

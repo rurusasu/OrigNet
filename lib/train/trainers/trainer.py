@@ -94,7 +94,7 @@ class Trainer(object):
             with torch.no_grad():
                 output, loss, loss_stats = self.network(batch)
                 if evaluator is not None:
-                    evaluator.evaluate(output, batch)
+                    evaluator.evaluate(output=output, batch=batch)
 
             loss_stats = self.reduce_loss_stats(loss_stats)
             for k, v in loss_stats.items():

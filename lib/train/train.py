@@ -86,7 +86,7 @@ if __name__ == "__main__":
     cfg = CN()
     cfg.task = "classify"
     cfg.network = "cnns"
-    cfg.model = "res_34"
+    cfg.model = "res_18"
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"
