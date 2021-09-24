@@ -99,7 +99,7 @@ if __name__ == "__main__":
     cfg.save_ep = 5
     cfg.eval_ep = 1
     cfg.train = CN()
-    cfg.train.epoch = 30
+    cfg.train.epoch = 10
     cfg.train.dataset = "SampleTrain"
     cfg.train.batch_size = 10
     cfg.train.num_workers = 4

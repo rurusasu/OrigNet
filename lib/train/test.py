@@ -16,7 +16,7 @@ from lib.utils.net_utils import load_network
 
 
 def test(cfg: CfgNode):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     # 検証用のデータローダーを作成
     val_loader = make_data_loader(cfg, is_train=False)
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     cfg = CfgNode()
     cfg.task = "classify"
     cfg.network = "cnns"
-    cfg.model = "res_34"
+    cfg.model = "res_18"
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"

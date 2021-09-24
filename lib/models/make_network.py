@@ -59,7 +59,7 @@ def transfer_network(network, num_classes: int):
         # ResNet の場合
         num_ftrs = network.fc.in_features
         fc = nn.Linear(num_ftrs, num_classes)
-        network.classifier = fc
+        network.fc = fc
     return network
 
 

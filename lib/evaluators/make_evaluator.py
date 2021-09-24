@@ -19,7 +19,7 @@ def _evaluator_factory(cfg: CfgNode) -> object:
     Returns:
         object: 引数で指定した python ソースファイル内に記述されている関数
     """
-    eval_pth = os.path.join(pth.LIB_DIR, "evaluators", cfg.task, cfg.task + ".py")
+    eval_pth = os.path.join(pth.LIB_DIR, "evaluators", "tasks", cfg.task + ".py")
     spec = importlib.util.spec_from_file_location(cfg.task, eval_pth)
     eval_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(eval_module)
@@ -40,5 +40,5 @@ def make_evaluator(cfg: CfgNode) -> object:
         return None
     else:
         eval_class = _evaluator_factory(cfg)
-        eval_class(cfg.result_dir)
+        eval_class = eval_class(cfg.result_dir)
         return eval_class
