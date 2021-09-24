@@ -53,7 +53,9 @@ ResNet_spec = {
 
 
 def get_res_net(
-    model_num: Literal[18, 34, 50, 101, 152], pretrained: bool = False, **kwargs
+    model_num: Literal["18", "34", "50", "101", "152"],
+    pretrained: bool = False,
+    **kwargs
 ):
     model = ResNet_spec[model_num](pretrained, **kwargs)
 

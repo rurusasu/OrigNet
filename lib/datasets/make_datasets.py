@@ -3,7 +3,7 @@ import importlib.util
 import os
 import sys
 import time
-from typing import Type, Union
+from typing import Literal, Type, Union
 from torch._C import TensorType
 
 
@@ -22,7 +22,8 @@ from lib.config.config import pth
 
 
 def _dataset_factory(pth, task: str) -> object:
-    """データセット名に合わせて作成されたディレクトリ内のファイルを読みだす関数
+    """
+    データセット名に合わせて作成されたディレクトリ内のファイルを読みだす関数
 
     Args:
         data_source (str): DataCatalog に保存されているデータセット名と同じ文字列
@@ -45,7 +46,9 @@ def make_dataset(
     transforms: Type[Union[None, TensorType]] = None,
     is_train: bool = True,
 ):
-    """`DatasetCatalog` から `dataset_name` を参照し，そこに保存されている情報をもとにデータセットを作成する関数
+    """
+    `DatasetCatalog` から `dataset_name` を参照し，そこに保存されている情報をもとにデータセットを作成する関数
+
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
         dataset_name (str): ロードするデータセット名
@@ -75,22 +78,27 @@ def _make_data_sampler(dataset, shuffle: bool):
 
 
 def _make_batch_data_sampler(
-    cfg: CfgNode,
     sampler: Sampler,
     batch_size: int,
     drop_last: bool,
     max_iter: int,
-    is_train: bool = True,
+    strategy: Literal[
+        "image_size",
+    ] = "image_size",
 ):
-    """イタレーションごとにデータセットからデータをサンプリングする際に行う処理を決定する関数
+    """
+    イタレーションごとにデータセットからデータをサンプリングする際に行う処理を決定する関数
 
     Args:
-        cfg (CfgNode): `config` 情報が保存された辞書．
-        sampler (torch.utils.data.sampler.Sampler): データセットからデータをサンプリングする際の処理を自動化するクラス
-        batch_size (int): バッチサイズ
-        drop_last (bool): サンプリングしきれなかった余りを切り捨てるか
-        max_iter (int): イテレーションの最大値
-        is_train (bool): 訓練用データセットか否か．default to True.
+        sampler (Sampler): データセットからデータをサンプリングする際の処理を自動化するクラス．
+        batch_size (int): バッチサイズ．
+        drop_last (bool): サンプリングしきれなかった余りを切り捨てるか．
+        max_iter (int): イテレーションの最大値．
+        strategy (Literal[str, optional): 特殊な `batch_sampler` を使用する場合に設定する.
+                                                    Defaults to "image_size".
+
+    Returns:
+        [type]: [description]
     """
     batch_sampler = torch.utils.data.sampler.BatchSampler(
         sampler, batch_size, drop_last
@@ -98,7 +106,6 @@ def _make_batch_data_sampler(
     if max_iter != -1:
         batch_sampler = samplers.IterationBasedBatchSampler(batch_sampler, max_iter)
 
-    strategy = cfg.train.batch_sampler if is_train else cfg.test.batch_sampler
     if strategy == "image_size":
         batch_sampler = samplers.ImageSizeBatchSampler(
             sampler, batch_size, drop_last, 256, 480, 640
@@ -122,13 +129,14 @@ def make_data_loader(
     is_distributed: bool = False,
     max_iter: int = -1,
 ):
-    """データローダーを作成する関数．
+    """
+    データローダーを作成する関数．
 
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
-        is_train (bool): 訓練用データセットか否か．default to True.
-        is_distributed (bool): データをシャッフルしたものをテストに使用するか．default to False.
-        max_iter (int): イテレーションの最大値．default to -1.
+        is_train (bool): 訓練用データセットか否か．Defaults to True.
+        is_distributed (bool): データをシャッフルしたものをテストに使用するか．Defaults to False.
+        max_iter (int): イテレーションの最大値．Defaults to -1.
     """
     if is_train:
         if (
@@ -142,6 +150,8 @@ def make_data_loader(
         batch_size = cfg.train.batch_size
         shuffle = True
         drop_last = False
+        num_workers = cfg.train.num_workers
+        batch_sampler = cfg.train.batch_sampler
     else:
         if (
             "test" not in cfg
@@ -154,6 +164,8 @@ def make_data_loader(
         batch_size = cfg.test.batch_size
         shuffle = True if is_distributed else False
         drop_last = False
+        num_workers = cfg.test.num_workers
+        batch_sampler = cfg.test.batch_sampler
 
     dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
 
@@ -163,9 +175,9 @@ def make_data_loader(
     )
     sampler = _make_data_sampler(dataset, shuffle)
     batch_sampler = _make_batch_data_sampler(
-        cfg, sampler, batch_size, drop_last, max_iter, is_train
+        sampler, batch_size, drop_last, max_iter, batch_sampler
     )
-    num_workers = cfg.train.num_workers
+
     data_loader = torch.utils.data.DataLoader(
         dataset,
         batch_sampler=batch_sampler,

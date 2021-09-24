@@ -29,6 +29,7 @@ def train(cfg: CfgNode) -> None:
     # cuda が存在する場合，cudaを使用する
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.multiprocessing.set_sharing_strategy("file_system")
+    # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
     val_loader = make_data_loader(cfg, is_train=False)
 
@@ -89,7 +90,6 @@ if __name__ == "__main__":
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"
-    cfg.num_classes = 2
     cfg.img_width = 200
     cfg.img_height = 200
     cfg.resume = True  # 追加学習するか
