@@ -11,7 +11,7 @@ def make_optimizer(cfg, network):
         and "weight_decay" not in cfg.train
         and "optim" not in cfg.train
     ):
-        raise ("The required parameter is not set.")
+        raise ("The required parameter for `make_optimizer` is not set.")
     params = []
     lr = cfg.train.lr
     weight_decay = cfg.train.weight_decay

@@ -3,9 +3,11 @@ import sys
 sys.path.append(".")
 sys.path.append("../../../")
 
-from lib.models.res.resnet import get_res_net as get_res
+from lib.models.cnns.efficientnet import get_efficient_net as get_eff
+from lib.models.cnns.resnet import get_res_net as get_res
 
 _network_factory = {
+    "eff": get_eff,
     "res": get_res,
 }
 
@@ -18,7 +20,7 @@ def get_network(cfg):
     # }
     arch = cfg.model
     if arch.find("_"):
-        num_layers = int(arch[arch.find("_") + 1 :]) if "_" in arch else 0
+        model_num = str(arch[arch.find("_") + 1:]) if "_" in arch else 0
         arch = arch[: arch.find("_")]
 
     if arch not in _network_factory:
@@ -30,9 +32,9 @@ def get_network(cfg):
 
     # 転移学習を行う場合
     if "transfer" in cfg.train_type:
-        model = get_model(num_layers, pretrained=True)
+        model = get_model(model_num, pretrained=True)
     elif "scratch" in cfg.train_type and int(cfg.num_classes) > 0:
-        model = get_model(num_layers, pretrained=False, num_classes=cfg.num_classes)
+        model = get_model(model_num, pretrained=False, num_classes=cfg.num_classes)
     else:
         raise ValueError(f"The specified cfg.network={cfg.train_type} does not exist.")
 
