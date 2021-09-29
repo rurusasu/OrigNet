@@ -8,7 +8,9 @@ sys.path.append("../../")
 import timm
 
 # timm の github
-# REF: https://github.com/rwightman/gen-efficientnet-pytorch
+# REF: https://github.com/rwightman/pytorch-image-models
+# timm の Docs
+# REF: https://fastai.github.io/timmdocs/
 # 関数化
 # REF:https://dajiro.com/entry/2020/07/24/161040
 

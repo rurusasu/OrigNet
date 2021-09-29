@@ -18,7 +18,7 @@ from lib.config.config import pth
 from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
 
 
-class Dataset(data.Dataset):
+class ClassifyDataset(data.Dataset):
     """data_root の子ディレクトリ名がクラスラベルという仮定のもとデータセットを作成するクラス．
     データセットは以下のような構成を仮定
     dataset_root
@@ -40,7 +40,7 @@ class Dataset(data.Dataset):
         cls_names: List[str] = None,
         transforms: transforms = None,
     ) -> None:
-        super(Dataset, self).__init__()
+        super(ClassifyDataset, self).__init__()
 
         self.file_ext = {
             ".jpg",
@@ -92,6 +92,13 @@ class Dataset(data.Dataset):
         # images (rgb, mask) の読み出し
         imgs = LoadImgs(self.imgs, img_id, self.msks)
 
+        if len(imgs["img"].shape) == 2:
+            imgs["img"] = np.stack([imgs["img"], imgs["img"], imgs["img"]], axis=2)
+        elif len(imgs["img"].shape) == 3:
+            pass
+        else:
+            raise ValueError("Incorrect way of giving image size.")
+
         # `OpenCV` および `numpy` を用いたデータ拡張
         if self.split == "train":
             imgs = augmentation(imgs, height, width, self.split)
@@ -115,7 +122,7 @@ class Dataset(data.Dataset):
             "msk": imgs["msk"],
             "meta": self.split,
             "target": self.targets[img_id],
-            "cls_name": self.classes[self.targets[img_id]],
+            "cls_names": self.classes[self.targets[img_id]],
         }
         return ret
 

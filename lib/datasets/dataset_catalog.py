@@ -40,6 +40,14 @@ class DatasetCatalog(object):
             "id": "sample",
             "data_root": "sample/test",
         },
+        "Sample_2Train": {
+            "id": "sample",
+            "data_root": "sample_2/train",
+        },
+        "Sample_2Test": {
+            "id": "sample",
+            "data_root": "sample_2/test",
+        },
     }
 
     @staticmethod

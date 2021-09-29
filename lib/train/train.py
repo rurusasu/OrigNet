@@ -70,10 +70,10 @@ def train(cfg: CfgNode) -> None:
 def main(cfg):
     # データの保存先を設定
     cfg.model_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.model, cfg.model_dir
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
     )
     cfg.record_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.model, cfg.record_dir
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
     )
     # 訓練
     train(cfg)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     cfg = CN()
     cfg.task = "classify"
     cfg.network = "cnns"
-    cfg.model = "res_18"
+    cfg.model = "alex"
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     cfg.save_ep = 5
     cfg.eval_ep = 1
     cfg.train = CN()
-    cfg.train.epoch = 10
+    cfg.train.epoch = 5
     cfg.train.dataset = "SampleTrain"
     cfg.train.batch_size = 10
     cfg.train.num_workers = 4

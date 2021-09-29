@@ -34,6 +34,7 @@ def main(cfg):
     cfg.result_dir = os.path.join(
         pth.DATA_DIR, "trained", cfg.task, cfg.model, "result"
     )
+    cfg.record_dir = cfg.result_dir
     cfg.model_dir = os.path.join(
         pth.DATA_DIR, "trained", cfg.task, cfg.model, cfg.model_dir
     )

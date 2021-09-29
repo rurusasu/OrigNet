@@ -20,7 +20,7 @@ file_ext = {
 }
 
 
-def GetImgFpsAndLabels(data_root: str):
+def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
     """指定したディレクトリ内の画像ファイルパス(Image file paths)とクラスラベルの一覧を取得する関数．
 
     Arg:
@@ -54,7 +54,7 @@ def GetImgFpsAndLabels(data_root: str):
                 if os.path.isfile(img_pth) and os.path.splitext(img_pth)[1] in file_ext:
                     # 画像データパスをリストに格納
                     imgs.append(img_pth)
-                    # label_num をリストに格納
+                    # label_num のみ格納したリストを作成
                     targets.append(i)
 
             # mask 画像を探索

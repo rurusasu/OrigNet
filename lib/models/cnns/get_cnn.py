@@ -3,24 +3,23 @@ import sys
 sys.path.append(".")
 sys.path.append("../../../")
 
+from lib.models.cnns.alexnet import get_alex_net as get_alex
 from lib.models.cnns.efficientnet import get_efficient_net as get_eff
 from lib.models.cnns.resnet import get_res_net as get_res
 
 _network_factory = {
+    "alex": get_alex,
     "eff": get_eff,
     "res": get_res,
 }
 
 
-def get_network(cfg):
-    # from .resnet import get_res_net as get_res
+def GetCNN(cfg):
 
-    # _network_factory = {
-    #    "res": get_res,
-    # }
+    model_num = -1
     arch = cfg.model
-    if arch.find("_"):
-        model_num = str(arch[arch.find("_") + 1:]) if "_" in arch else 0
+    if "_" in arch:
+        model_num = str(arch[arch.find("_") + 1 :]) if "_" in arch else 0
         arch = arch[: arch.find("_")]
 
     if arch not in _network_factory:

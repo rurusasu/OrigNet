@@ -1,8 +1,6 @@
-import numpy as np
 import torch
 from torchvision import transforms
 from torchvision.transforms import Compose
-from torchvision.transforms.transforms import Resize
 from yacs.config import CfgNode
 
 

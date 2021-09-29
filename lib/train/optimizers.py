@@ -16,7 +16,9 @@ def make_optimizer(cfg, network):
     lr = cfg.train.lr
     weight_decay = cfg.train.weight_decay
 
-    # 層ごとにハイパ－パラメタを設定する
+    # --------------------------------------- #
+    # 層ごとにハイパ－パラメタを設定する #
+    # --------------------------------------- #
     for key, value in network.named_parameters():
         if not value.requires_grad:
             continue

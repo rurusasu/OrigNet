@@ -1,11 +1,7 @@
-import importlib.machinery
-import importlib.util
-import os
 import sys
 import time
 from typing import Literal, Type, Union
 from torch._C import TensorType
-
 
 sys.path.append(".")
 sys.path.append("../../")
@@ -15,29 +11,13 @@ import torch
 from torch.utils.data.sampler import Sampler
 from yacs.config import CfgNode
 
-from . import samplers
-from .dataset_catalog import DatasetCatalog
-from .transforms import make_transforms
-from lib.config.config import pth
+from lib.datasets.dataset_catalog import DatasetCatalog
+from lib.datasets.samplers import ImageSizeBatchSampler, IterationBasedBatchSampler
+from lib.datasets.tasks.classify import ClassifyDataset
+from lib.datasets.transforms import make_transforms
 
 
-def _dataset_factory(task: str) -> object:
-    """
-    データセット名に合わせて作成されたディレクトリ内のファイルを読みだす関数
-
-    Args:
-        data_source (str): DataCatalog に保存されているデータセット名と同じ文字列
-        task (str): 実行するタスク名．例: 'classify'
-
-    Returns:
-        object: 引数で指定した python ソースファイル内に記述されている関数
-    """
-    data_pth = os.path.join(pth.LIB_DIR, "datasets", "tasks", task + ".py")
-    spec = importlib.util.spec_from_file_location(task, data_pth)
-    my_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(my_module)
-
-    return my_module.Dataset
+_dataset_factory = {"classify": ClassifyDataset}
 
 
 def make_dataset(
@@ -56,7 +36,7 @@ def make_dataset(
         is_train (bool): 訓練用データセットか否か．default to True.
     """
     args = DatasetCatalog.get(dataset_name)
-    dataset = _dataset_factory(cfg.task)
+    dataset = _dataset_factory[cfg.task]
     args["cfg"] = cfg
     del args["id"]
 
@@ -104,10 +84,10 @@ def _make_batch_data_sampler(
         sampler, batch_size, drop_last
     )
     if max_iter != -1:
-        batch_sampler = samplers.IterationBasedBatchSampler(batch_sampler, max_iter)
+        batch_sampler = IterationBasedBatchSampler(batch_sampler, max_iter)
 
     if strategy == "image_size":
-        batch_sampler = samplers.ImageSizeBatchSampler(
+        batch_sampler = ImageSizeBatchSampler(
             sampler, batch_size, drop_last, 256, 480, 640
         )
 

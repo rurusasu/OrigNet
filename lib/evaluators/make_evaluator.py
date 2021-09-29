@@ -1,5 +1,3 @@
-import importlib.util
-import os
 import sys
 
 sys.path.append("../../")
@@ -7,24 +5,10 @@ sys.path.append("../../../")
 
 from yacs.config import CfgNode
 
-from lib.config.config import pth
+from lib.evaluators.tasks.classify import ClassifyEvaluator
 
 
-def _evaluator_factory(cfg: CfgNode) -> object:
-    """データセット名に合わせて作成されたディレクトリ内のファイルを読みだす関数
-
-    Args:
-        cfg (CfgNode): `config` 情報が保存された辞書．
-
-    Returns:
-        object: 引数で指定した python ソースファイル内に記述されている関数
-    """
-    eval_pth = os.path.join(pth.LIB_DIR, "evaluators", "tasks", cfg.task + ".py")
-    spec = importlib.util.spec_from_file_location(cfg.task, eval_pth)
-    eval_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(eval_module)
-
-    return eval_module.evaluator
+_evaluator_factory = {"classify": ClassifyEvaluator}
 
 
 def make_evaluator(cfg: CfgNode) -> object:
@@ -39,6 +23,7 @@ def make_evaluator(cfg: CfgNode) -> object:
     if cfg.skip_eval:
         return None
     else:
-        eval_class = _evaluator_factory(cfg)
+        task = cfg.task
+        eval_class = _evaluator_factory[task]
         eval_class = eval_class(cfg.result_dir)
         return eval_class

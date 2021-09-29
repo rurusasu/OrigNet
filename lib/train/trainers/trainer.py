@@ -40,7 +40,7 @@ class Trainer(object):
                     loss = loss.mean()
                 else:
                     # バッチサイズをもとに平均値を計算
-                    loss = loss / len(batch["cls_name"])
+                    loss = loss / len(batch["cls_names"])
                 # optimizer の初期化
                 optimizer.zero_grad()
                 # 逆伝搬計算
@@ -94,7 +94,7 @@ class Trainer(object):
             with torch.no_grad():
                 output, loss, loss_stats = self.network(batch)
                 if evaluator is not None:
-                    evaluator.evaluate(output=output, batch=batch)
+                    result = evaluator.evaluate(output=output, batch=batch)
 
             loss_stats = self.reduce_loss_stats(loss_stats)
             for k, v in loss_stats.items():
