@@ -41,12 +41,24 @@ class DatasetCatalog(object):
             "data_root": "sample/test",
         },
         "Sample_2Train": {
-            "id": "sample",
+            "id": "sample_2",
             "data_root": "sample_2/train",
         },
         "Sample_2Test": {
-            "id": "sample",
+            "id": "sample_2",
             "data_root": "sample_2/test",
+        },
+        "AngleDetectTrain_1": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_1/training",
+        },
+        "AngleDetectVal_1": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_1/validation",
+        },
+        "AngleDetectTest": {
+            "id": "angle",
+            "data_root": "AngleDetection/Test",
         },
     }
 
