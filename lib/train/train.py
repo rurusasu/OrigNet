@@ -101,8 +101,9 @@ if __name__ == "__main__":
     cfg.eval_ep = 1
     cfg.train = CN()
     cfg.train.epoch = 10
-    cfg.train.dataset = "SampleTrain"
+    # cfg.train.dataset = "SampleTrain"
     # cfg.train.dataset = "Sample_2Train"
+    cfg.train.dataset = "BrakeRotorsTrain"
     cfg.train.batch_size = 30
     cfg.train.num_workers = 4
     cfg.train.batch_sampler = "image_size"
@@ -114,8 +115,9 @@ if __name__ == "__main__":
     cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
     cfg.train.gamma = 0.5
     cfg.test = CN()
-    cfg.test.dataset = "SampleTest"
+    # cfg.test.dataset = "SampleTest"
     # cfg.test.dataset = "Sample_2Test"
+    cfg.test.dataset = "BrakeRotorsTest"
     cfg.test.batch_size = 20
     cfg.test.num_workers = 2
     cfg.test.batch_sampler = "image_size"

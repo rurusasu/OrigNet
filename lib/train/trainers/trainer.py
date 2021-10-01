@@ -39,6 +39,8 @@ class Trainer(object):
                 # --------------- #
                 # training stage #
                 # --------------- #
+                """
+                # 混合精度テスト
                 # optimizer の初期化
                 optimizer.zero_grad()
                 # 演算を混合精度でキャスト
@@ -50,13 +52,6 @@ class Trainer(object):
                     else:
                         # バッチサイズをもとに平均値を計算
                         loss = loss / len(batch["cls_names"])
-                # optimizer の初期化
-                # optimizer.zero_grad()
-                # 逆伝搬計算
-                # loss.backward()
-                # torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
-                # パラメタ更新
-                # optimizer.step()
 
                 # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
                 self.scaler.scale(loss).backward()
@@ -65,6 +60,22 @@ class Trainer(object):
                 self.scaler.step(optimizer)
                 optimizer.step()
                 self.scaler.update()
+                """
+
+                output, loss, loss_stats = self.network(batch)
+                if loss.ndim != 0:
+                    # 損失の平均値を計算
+                    loss = loss.mean()
+                else:
+                    # バッチサイズをもとに平均値を計算
+                    loss = loss / len(batch["cls_names"])
+                # optimizer の初期化
+                optimizer.zero_grad()
+                # 逆伝搬計算
+                loss.backward()
+                torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
+                # パラメタ更新
+                optimizer.step()
 
                 # data recording stage
                 loss_stats = self.reduce_loss_stats(loss_stats)
