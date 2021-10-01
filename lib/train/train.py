@@ -20,7 +20,8 @@ from lib.utils.net_utils import load_model, save_model
 
 
 def train(cfg: CfgNode) -> None:
-    """訓練と検証を行い，任意のエポック数ごとに訓練されたネットワークを保存する関数．
+    """
+    訓練と検証を行い，任意のエポック数ごとに訓練されたネットワークを保存する関数．
 
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
@@ -29,16 +30,17 @@ def train(cfg: CfgNode) -> None:
         raise ("The training configuration is not set.")
 
     # cuda が存在する場合，cudaを使用する
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
     val_loader = make_data_loader(cfg, is_train=False)
 
     cfg.num_classes = len(train_loader.dataset.classes)
+    # 指定した device 上でネットワークを生成
     network = make_network(cfg).to(device)
 
-    trainer = make_trainer(cfg, network)
+    trainer = make_trainer(cfg, network, device)
     optimizer = make_optimizer(cfg, network)
     scheduler = make_lr_scheduler(cfg, optimizer)
     recorder = make_recorder(cfg)

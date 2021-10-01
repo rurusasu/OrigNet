@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import cv2
 import numpy as np
+import torch
 from PIL import Image
 
 
@@ -18,6 +19,28 @@ file_ext = {
     ".tiff",
     ".webp",
 }
+
+
+def SelectDevice(max_gpu_num: int = 0):
+    """
+    CUDA GPU が使用できるかを判定し，使用できればその個数を取得，できなければ cpu を選択する関数．
+
+    Arg:
+        max_gpu_num(int): 使用する GPU の最大個数．0 <= n <= max_gpu_count で指定する．Default to 0.
+    """
+    if torch.cuda.is_available():  # GPU が使用可能な場合
+        num_devices = torch.cuda.device_count()
+        if num_devices == 1:  # GPU が1つしか搭載されていない場合
+            return [0]
+        else:  # GPU が 2 つ以上搭載されている場合
+            gpu_num = []
+            for i in range(num_devices):
+                gpu_num.append(i)
+                if num_devices < max_gpu_num:
+                    break
+            return gpu_num
+    else:  # GPU が使用不可
+        return "cpu"
 
 
 def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
@@ -103,3 +126,7 @@ def LoadImgs(
 
     imgs["img"], imgs["msk"] = img, msk
     return imgs
+
+
+if __name__ == "__main__":
+    print(SelectDevice())

@@ -1,6 +1,3 @@
-import importlib.machinery
-import importlib.util
-import os
 import sys
 
 sys.path.append(".")
@@ -8,22 +5,27 @@ sys.path.append("../../../")
 
 from yacs.config import CfgNode
 
+from lib.train.trainers.classify import ClassifyNetworkWrapper
 from lib.train.trainers.trainer import Trainer
-from lib.config.config import pth
 
 
-def _wrapper_factory(cfg: CfgNode):
-    path = os.path.join(pth.LIB_DIR, "train", "trainers", cfg.task + ".py")
-    spec = importlib.util.spec_from_file_location("NetworkWrapper", path)
-    my_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(my_module)
-    return my_module.NetworkWrapper
+_wrapper_factory = {"classify": ClassifyNetworkWrapper}
 
 
-def make_trainer(cfg: CfgNode, network):
-    module = _wrapper_factory(cfg)
-    network = module(cfg, network)
-    return Trainer(network)
+def make_trainer(cfg: CfgNode, network, device: str = "cpu"):
+    """
+    Trainer クラスを呼び出す関数
+    device 引数について不明な場合は以下を参照．
+    REF: https://note.nkmk.me/python-pytorch-device-to-cuda-cpu/
+
+    Args:
+        cfg (CfgNode): `config` 情報が保存された辞書．
+        network: 訓練されるネットワーク
+        device(str): 'cpu' もしくは 'cuda: n' ここで n はGPU 番号．Default to 'cpu'.
+    """
+    wrapper = _wrapper_factory[cfg.task]
+    network = wrapper(cfg, network, device)
+    return Trainer(network, device)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import datetime
+from re import S
 import sys
 import time
 
@@ -9,13 +10,28 @@ import tqdm
 from torch.nn import DataParallel
 from torch.cuda import amp
 
+from lib.utils.base_utils import SelectDevice
+
 
 class Trainer(object):
-    def __init__(self, network):
-        network = network.cuda()
-        network = DataParallel(network)
-        self.network = network
+    def __init__(self, network, device: str = "cpu"):
+        """
+        device 引数について不明な場合は以下を参照．
+        REF: https://note.nkmk.me/python-pytorch-device-to-cuda-cpu/
+
+        Args:
+            network: 訓練されるネットワーク
+            device(str): 'cpu' もしくは 'cuda: n' ここで n はGPU 番号．Default to 'cpu'.
+        """
+
+        num_device = SelectDevice()
+        if num_device == "cpu":
+            network = DataParallel(network)
+        else:
+            network = DataParallel(network, device_ids=num_device)
+        self.network = network.to(device)
         self.scaler = amp.GradScaler()
+        self.device = torch.device(device)
 
     def reduce_loss_stats(self, loss_stats: dict) -> dict:
         """

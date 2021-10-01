@@ -5,17 +5,18 @@ import torch.nn as nn
 from yacs.config import CfgNode
 
 
-class NetworkWrapper(nn.Module):
+class ClassifyNetworkWrapper(nn.Module):
     """
     ネットワークからの出力と教師データに基づいて損失を計算する機能をラップする
     画像を入力，出力をそのクラスラベルとする画像分類に特化したモデルを作成する
     """
 
-    def __init__(self, cfg: CfgNode, net):
-        super(NetworkWrapper, self).__init__()
+    def __init__(self, cfg: CfgNode, net, device):
+        super(ClassifyNetworkWrapper, self).__init__()
 
         if "train" not in cfg and "criterion" not in cfg.train:
             raise ("The required parameter for `NetworkWrapper` is not set.")
+        self.device = torch.device(device)
         self.net = net
         self.criterion = cfg.train.criterion
         self.num_classes = cfg.num_classes
@@ -27,8 +28,8 @@ class NetworkWrapper(nn.Module):
             self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, batch: Dict):
-        input = batch["img"].cuda()
-        target = batch["target"].cuda()
+        input = batch["img"].to(self.device)
+        target = batch["target"].to(self.device)
 
         # 出力は，
         # [[0番目のクラス，0番目のクラス，...batchの大きさ分繰り返し],

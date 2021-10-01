@@ -158,11 +158,14 @@ def make_data_loader(
         sampler, batch_size, drop_last, max_iter, batch_sampler
     )
 
+    # 引数: pin_memory について
+    # REF: https://qiita.com/sugulu_Ogawa_ISID/items/62f5f7adee083d96a587
     data_loader = torch.utils.data.DataLoader(
         dataset,
         batch_sampler=batch_sampler,
         num_workers=num_workers,
         worker_init_fn=_worker_init_fn,
+        pin_memory=True,
     )
 
     return data_loader
