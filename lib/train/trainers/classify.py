@@ -27,8 +27,8 @@ class NetworkWrapper(nn.Module):
             self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, batch: Dict):
-        input = batch["img"]
-        target = batch["target"]
+        input = batch["img"].cuda()
+        target = batch["target"].cuda()
 
         # 出力は，
         # [[0番目のクラス，0番目のクラス，...batchの大きさ分繰り返し],

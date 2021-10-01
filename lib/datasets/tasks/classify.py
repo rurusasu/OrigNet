@@ -103,16 +103,6 @@ class ClassifyDataset(data.Dataset):
         if self.split == "train":
             imgs = augmentation(imgs, height, width, self.split)
 
-        # 画像をテンソルに変換
-        img_transforms = transforms.Compose(
-            [transforms.ToTensor(), transforms.Resize((width, height))]
-        )
-        for k in imgs.keys():
-            if len(imgs[k]) > 0:
-                imgs[k] = img_transforms(
-                    Image.fromarray(np.ascontiguousarray(imgs[k], np.uint8))
-                )
-
         # `transforms`を用いた変換がある場合は行う．
         if self._transforms is not None:
             imgs["img"] = self._transforms(imgs["img"])

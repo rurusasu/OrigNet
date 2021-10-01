@@ -1,13 +1,13 @@
 import torch
 from torchvision import transforms
-from torchvision.transforms import Compose
+from torchvision.transforms import Compose, ToTensor
 from yacs.config import CfgNode
 
 
-class ToTensor(object):
-    def __call__(self, img: torch.Tensor) -> torch.Tensor:
-        # return np.asarray(img).astype(np.float32) / 255.0
-        return img / 255.0
+# class ToTensor(object):
+#    def __call__(self, img: torch.Tensor) -> torch.Tensor:
+#        # return np.asarray(img).astype(np.float32) / 255.0
+#        return img / 255.0
 
 
 def make_transforms(cfg: CfgNode, is_train: bool) -> transforms:
@@ -22,7 +22,10 @@ def make_transforms(cfg: CfgNode, is_train: bool) -> transforms:
     if is_train is True:
         transform = Compose(
             [
+                # Tensor型に変換する
                 ToTensor(),
+                # 画像をimg_width×img_heightの大きさに統一する
+                transforms.Resize((cfg.img_width, cfg.img_height)),
                 transforms.ColorJitter(0.1, 0.1, 0.05, 0.05),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -32,7 +35,10 @@ def make_transforms(cfg: CfgNode, is_train: bool) -> transforms:
     else:
         transform = Compose(
             [
+                # Tensor型に変換する
                 ToTensor(),
+                # 画像をimg_width×img_heightの大きさに統一する
+                transforms.Resize((cfg.img_width, cfg.img_height)),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 ),
