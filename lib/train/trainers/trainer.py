@@ -25,12 +25,14 @@ class Trainer(object):
         """
 
         num_device = SelectDevice()
+        # Dataparallel の使い方は以下のサイトを参照．
+        # REF: https://qiita.com/m__k/items/87b3b1da15f35321ecf5
         if num_device == "cpu":
             network = DataParallel(network)
         else:
             network = DataParallel(network, device_ids=num_device)
         self.network = network.to(device)
-        self.scaler = amp.GradScaler()
+        self.scaler = amp.GradScaler(enabled=False)
         self.device = torch.device(device)
 
     def reduce_loss_stats(self, loss_stats: dict) -> dict:
@@ -74,7 +76,7 @@ class Trainer(object):
 
                 # グラデーションのスケールを解除し、optimizer.step()を呼び出すかスキップする。
                 self.scaler.step(optimizer)
-                optimizer.step()
+                # optimizer.step()
                 self.scaler.update()
                 """
 

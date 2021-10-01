@@ -100,7 +100,8 @@ def _worker_init_fn(worker_id):
     これにより、workerの分だけforkするときに同一のnumpyのRandom Stateの状態がコピーされるため生じる入力データの重複を避けることができる。
     REF: https://qiita.com/kosuke1701/items/14cd376e024f86e57ff6
     """
-    np.random.seed(worker_id + (int(round(time.time() * 1000) % (2 ** 16))))
+    # np.random.seed(worker_id + (int(round(time.time() * 1000) % (2 ** 16))))
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
 def make_data_loader(

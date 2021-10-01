@@ -16,14 +16,15 @@ from lib.utils.net_utils import load_network
 
 
 def test(cfg: CfgNode):
-    device = torch.device("cpu")
+    # cuda が存在する場合，cudaを使用する
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # 検証用のデータローダーを作成
     val_loader = make_data_loader(cfg, is_train=False)
 
     cfg.num_classes = len(val_loader.dataset.classes)
     network = make_network(cfg).to(device)
 
-    trainer = make_trainer(cfg, network)
+    trainer = make_trainer(cfg, network, device)
     evaluator = make_evaluator(cfg)
     epoch = load_network(network, cfg.model_dir)
     trainer.val(epoch, val_loader, evaluator)
@@ -57,9 +58,10 @@ if __name__ == "__main__":
     cfg.train = CfgNode()
     cfg.train.criterion = ""
     cfg.test = CfgNode()
-    cfg.test.dataset = "SampleTest"
+    # cfg.test.dataset = "SampleTest"
+    cfg.test.dataset = "BrakeRotorsTest"
     cfg.test.batch_size = 20
-    cfg.test.num_workers = 2
+    cfg.test.num_workers = 4
     cfg.test.batch_sampler = "image_size"
 
     main(cfg)

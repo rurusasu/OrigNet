@@ -4,6 +4,9 @@ from lib.utils.optimizer.radam import RAdam
 _optimizer_factory = {"adam": torch.optim.Adam, "radam": RAdam, "sgd": torch.optim.SGD}
 
 
+_TransferLearningRateParam = {"alex": ["classifier.6.weight", "classifier.6.bias"]}
+
+
 def make_optimizer(cfg, network):
     if (
         "train" not in cfg
@@ -22,7 +25,10 @@ def make_optimizer(cfg, network):
     for key, value in network.named_parameters():
         if not value.requires_grad:
             continue
-        params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
+        if key in _TransferLearningRateParam[cfg.model]:
+            params += [{"params": [value], "lr": lr * 10, "weight_decay": weight_decay}]
+        else:
+            params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
 
     if "adam" in cfg.train.optim:
         optimizer = _optimizer_factory[cfg.train.optim](

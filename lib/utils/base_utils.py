@@ -24,7 +24,8 @@ file_ext = {
 def SelectDevice(max_gpu_num: int = 0):
     """
     CUDA GPU が使用できるかを判定し，使用できればその個数を取得，できなければ cpu を選択する関数．
-
+    GPU 情報の取得 および 個数のカウント方法 は以下のサイトを参照．
+    REF: https://note.nkmk.me/python-pytorch-cuda-is-available-device-count/
     Arg:
         max_gpu_num(int): 使用する GPU の最大個数．0 <= n <= max_gpu_count で指定する．Default to 0.
     """

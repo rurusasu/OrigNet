@@ -1,3 +1,4 @@
+from operator import ne
 import sys
 
 sys.path.append(".")
@@ -52,9 +53,19 @@ def transfer_network(network, num_classes: int):
     if hasattr(network, "classifier"):
         # AlexNet の場合
         if issubclass(type(network.classifier), nn.Sequential):
-            num_ftrs = network.classifier[-1].in_features
+            # num_ftrs = network.classifier[-1].in_features
+            num_ftrs = network.classifier[1].in_features
+            out_ftrs = network.classifier[1].out_features
+            fc = nn.Linear(num_ftrs, out_features=out_ftrs)
+            network.classifier[1] = fc
+            num_ftrs = network.classifier[4].in_features
+            out_ftrs = network.classifier[4].out_features
+            fc = nn.Linear(num_ftrs, out_features=out_ftrs)
+            network.classifier[4] = fc
+            num_ftrs = network.classifier[6].in_features
+            out_ftrs = network.classifier[6].out_features
             fc = nn.Linear(num_ftrs, out_features=num_classes)
-            network.classifier[-1] = fc
+            network.classifier[6] = fc
         else:
             # EfficientNet の場合
             num_ftrs = network.classifier.in_features
