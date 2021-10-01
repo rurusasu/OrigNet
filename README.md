@@ -7,8 +7,14 @@ VS Code に `Remote-Containers`，`Remote-SSH`，`Remote-WSL`，`Remote-SSH: Edi
 
 1. VS Code から WSL for Ubuntu にアクセス．
 2. `./mnt/` 以下にあるプログラムファイルが置かれているディレクトリまで移動．
-3. VS Code 上の `Tarminal` に以下のコマンドを打つ．
+3. VS Code 上の `Tarminal` に以下のコマンドを打つ．処理中の選択肢はすべて `y` を選択．
 
 ```bash
 $ source ./create-env-on-wsl.sh
+```
+
+4. 続けて以下のコマンドを打つ．
+
+```bash
+$
 ```
