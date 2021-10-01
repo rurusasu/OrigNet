@@ -12,6 +12,26 @@ class DatasetCatalog(object):
     """訓練データセットの情報を格納した辞書データを持つクラス"""
 
     dataset_attrs = {
+        "AngleDetectTrain_1": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_1/training",
+        },
+        "AngleDetectVal_1": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_1/validation",
+        },
+        "AngleDetectTest": {
+            "id": "angle",
+            "data_root": "AngleDetection/Test",
+        },
+        "BrakeRotorsTrain": {
+            "id": "Brake",
+            "data_root": "BrakeRotors/casting_data/train",
+        },
+        "BrakeRotorsTest": {
+            "id": "Brake",
+            "data_root": "BrakeRotors/casting_data/test",
+        },
         "LinemodTrain": {
             "id": "linemod",
             "data_root": "linemod/",
@@ -20,16 +40,6 @@ class DatasetCatalog(object):
         "LinemodTest": {
             "id": "linemod",
             "data_root": "linemod/",
-            "split": "test",
-        },
-        "MnistTrain": {
-            "id": "mnist",
-            "data_root": "data",
-            "split": "train",
-        },
-        "MnistTest": {
-            "id": "mnist",
-            "data_root": "data",
             "split": "test",
         },
         "SampleTrain": {
@@ -47,18 +57,6 @@ class DatasetCatalog(object):
         "Sample_2Test": {
             "id": "sample_2",
             "data_root": "sample_2/test",
-        },
-        "AngleDetectTrain_1": {
-            "id": "angle",
-            "data_root": "AngleDetection/TrainingData_1/training",
-        },
-        "AngleDetectVal_1": {
-            "id": "angle",
-            "data_root": "AngleDetection/TrainingData_1/validation",
-        },
-        "AngleDetectTest": {
-            "id": "angle",
-            "data_root": "AngleDetection/Test",
         },
     }
 
