@@ -1,9 +1,13 @@
 import datetime
+import sys
 import time
+
+sys.path.append("../")
 
 import torch
 import tqdm
 from torch.nn import DataParallel
+from torch.cuda import amp
 
 
 class Trainer(object):
@@ -11,6 +15,7 @@ class Trainer(object):
         network = network.cuda()
         network = DataParallel(network)
         self.network = network
+        self.scaler = amp.GradScaler()
 
     def reduce_loss_stats(self, loss_stats: dict) -> dict:
         """
@@ -21,8 +26,8 @@ class Trainer(object):
 
     def train(self, epoch: int, data_loader, optimizer, recorder):
         torch.cuda.empty_cache()
-        max_iter = len(data_loader)
         self.network.train()
+        max_iter = len(data_loader)
         end = time.time()
 
         with tqdm.tqdm(total=len(data_loader), leave=False, desc="train") as pbar:
@@ -34,23 +39,34 @@ class Trainer(object):
                 # --------------- #
                 # training stage #
                 # --------------- #
-                output, loss, loss_stats = self.network(batch)
-                if loss.ndim != 0:
-                    # 損失の平均値を計算
-                    loss = loss.mean()
-                else:
-                    # バッチサイズをもとに平均値を計算
-                    loss = loss / len(batch["cls_names"])
                 # optimizer の初期化
                 optimizer.zero_grad()
+                # 演算を混合精度でキャスト
+                with amp.autocast():
+                    output, loss, loss_stats = self.network(batch)
+                    if loss.ndim != 0:
+                        # 損失の平均値を計算
+                        loss = loss.mean()
+                    else:
+                        # バッチサイズをもとに平均値を計算
+                        loss = loss / len(batch["cls_names"])
+                # optimizer の初期化
+                # optimizer.zero_grad()
                 # 逆伝搬計算
-                loss.backward()
-                torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
+                # loss.backward()
+                # torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
                 # パラメタ更新
+                # optimizer.step()
+
+                # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
+                self.scaler.scale(loss).backward()
+
+                # グラデーションのスケールを解除し、optimizer.step()を呼び出すかスキップする。
+                self.scaler.step(optimizer)
                 optimizer.step()
+                self.scaler.update()
 
                 # data recording stage
-                #
                 loss_stats = self.reduce_loss_stats(loss_stats)
                 recorder.update_loss_stats(loss_stats)
 
@@ -82,14 +98,14 @@ class Trainer(object):
                     recorder.record("train")
 
     def val(self, epoch, data_loader, evaluator=None, recorder=None):
-        self.network.eval()
         torch.cuda.empty_cache()
+        self.network.eval()
         val_loss_stats = {}
         data_size = len(data_loader)
         for batch in tqdm.tqdm(data_loader):
-            batch["img"] = batch["img"].cuda()
-            if batch["msk"]:
-                batch["msk"] = batch["msk"].cuda()
+            # batch["img"] = batch["img"].cuda()
+            # if batch["msk"]:
+            #     batch["msk"] = batch["msk"].cuda()
 
             with torch.no_grad():
                 output, loss, loss_stats = self.network(batch)
