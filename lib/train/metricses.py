@@ -21,5 +21,5 @@ def make_metrics(cfg: CfgNode) -> Any:
         raise ("The required parameter for `make_metrics` is not set.")
 
     metrics = _metrics_factory[cfg.train.metrics]
-    metrics = metrics(**cfg)
+    metrics = metrics()
     return metrics

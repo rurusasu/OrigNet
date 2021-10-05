@@ -1,5 +1,4 @@
 import sys
-import time
 from typing import Literal, Type, Union
 from torch._C import TensorType
 
@@ -14,10 +13,11 @@ from yacs.config import CfgNode
 from lib.datasets.dataset_catalog import DatasetCatalog
 from lib.datasets.samplers import ImageSizeBatchSampler, IterationBasedBatchSampler
 from lib.datasets.tasks.classify import ClassifyDataset
+from lib.datasets.tasks.semantic_segm import SegmentationDataset
 from lib.datasets.transforms import make_transforms
 
 
-_dataset_factory = {"classify": ClassifyDataset}
+_dataset_factory = {"classify": ClassifyDataset, "semantic_segm": SegmentationDataset}
 
 
 def make_dataset(

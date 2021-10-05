@@ -45,39 +45,62 @@ cfg = CN()
 Default values setting
 """
 # task
+# classify or semantic_segm
 cfg.task = ""
-# 例: classify
-# model
+# cnns, smp
+cfg.network = "cnns"
+# 例: alex
 cfg.model = ""
+# SemanticSegmentation 用のモデルで使用
+# 例: resnet18
+cfg.encoder_name = ""
 # 例: original
 cfg.model_dir = "data/model"
-cfg.network = "demo"
-# gpus
-cfg.gpus = [0, 1, 2, 3]
-
+# recorder
+cfg.record_dir = "data/record"
+# result
+cfg.result_dir = "data/result"
+# transfer or scratch
+cfg.train_type = "transfer"
 # img_size
 cfg.img_width = 255
 cfg.img_height = 255
+# 追加学習するか
+cfg.resume = True
+# 余ったバッチを切り捨てるか
+cfg.ep_iter = -1
+# 何 epoch で保存するか
+cfg.save_ep = 5
+cfg.eval_ep = 1
+# gpus
+cfg.gpus = [0, 1, 2, 3]
 
 # ---------------------
 # train
 # ---------------------
 cfg.train = CN()
 
+# dataset
 cfg.train.dataset = ""
 cfg.train.epoch = 140
 cfg.train.batch_size = 4
 cfg.train.num_workers = 2
+# image_size
 cfg.train.batch_sampler = ""
+cfg.train.optim = "adam"
+cfg.train.criterion = ""
+cfg.train.lr = 1e-3
+cfg.train.scheduler = "step_lr"
+cfg.train.weight_decay = 0.0
+cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+cfg.train.gamma = 0.5
 
-# dataset
-cfg.train.dataset = ""
-
-# recorder
-cfg.record_dir = "data/record"
-
-# result
-cfg.result_dir = "data/result"
+cfg.test = CN()
+cfg.test.dataset = ""
+cfg.test.batch_size = 20
+cfg.test.num_workers = 2
+# image_size
+cfg.test.batch_sampler = ""
 
 
 def parse_cfg(cfg, args):

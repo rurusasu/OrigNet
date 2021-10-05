@@ -18,7 +18,7 @@ from lib.config.config import pth
 from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
 
 
-class Dataset(data.Dataset):
+class SegmentationDataset(data.Dataset):
     """data_root の子ディレクトリ名がクラスラベルという仮定のもとデータセットを作成するクラス．
     データセットは以下のような構成を仮定
     dataset_root
@@ -45,7 +45,7 @@ class Dataset(data.Dataset):
         cls_names: List[str] = None,
         transforms: transforms = None,
     ) -> None:
-        super(Dataset, self).__init__()
+        super(SegmentationDataset, self).__init__()
 
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
@@ -90,20 +90,17 @@ class Dataset(data.Dataset):
 
         # images (rgb, mask) の読み出し
         imgs = LoadImgs(self.imgs, img_id, self.msks)
+        # インスタンスは異なる色でエンコードされます。
+        obj_ids = np.unique(imgs["msk"])
+        # 最初のIDは背景なので削除します
+        obj_ids = obj_ids[1:]
+
+        # カラー・エンコードされたマスクを、True/Falseで表現されたマスクに変換します
+        masks = msk == obj_ids[:, None, None]
 
         # `OpenCV` および `numpy` を用いたデータ拡張
         if self.split == "train":
             imgs = augmentation(imgs, height, width, self.split)
-
-        # 画像をテンソルに変換
-        img_transforms = transforms.Compose(
-            [transforms.ToTensor(), transforms.Resize((width, height))]
-        )
-        for k in imgs.keys():
-            if len(imgs[k]) > 0:
-                imgs[k] = img_transforms(
-                    Image.fromarray(np.ascontiguousarray(imgs[k], np.uint8))
-                )
 
         # `transforms`を用いた変換がある場合は行う．
         if self._transforms is not None:

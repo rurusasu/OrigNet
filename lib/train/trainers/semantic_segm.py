@@ -1,44 +1,45 @@
 import torch
 import torch.nn as nn
+import segmentation_models_pytorch as smp
 from yacs.config import CfgNode
 
 from lib.train.metricses import make_metrics
 
 
-class NetworkWrapper(nn.Module):
+class SemanticSegmentationNetworkWrapper(nn.Module):
     """
     ネットワークからの出力と教師データに基づいて損失を計算する機能をラップする
     画像を入力，出力をそのクラスラベルとする画像分類に特化したモデルを作成する
     """
 
-    def __init__(self, cfg: CfgNode, network):
-        super(NetworkWrapper, self).__init__()
+    def __init__(self, cfg: CfgNode, net, device):
+        super(SemanticSegmentationNetworkWrapper, self).__init__()
 
         if "train" not in cfg and "criterion" not in cfg.train:
-            raise ("The required parameter for `NetworkWrapper` is not set.")
-        self.network = network
+            raise (
+                "The required parameter for `SemanticSegmentationNetworkWrapper` is not set."
+            )
+
+        self.device = torch.device(device)
+        self.net = net
 
         # 損失関数 (criterion) を選択
-        if "mse" in cfg.train.criterion:
-            self.criterion = nn.MSELoss()
-        else:
-            self.criterion = nn.CrossEntropyLoss()
+        self.criterion = smp.utils.losses.DiceLoss()
 
         # 評価指標 (metrics) を選択
         self.metrics = make_metrics(cfg)
 
     def forward(self, batch: int):
-        output = self.network(batch["img"])
+        input = batch["img"].to(self.device)
+        target = batch["msk"].to(self.device)
+        output = self.net.forward(input)
         # スカラステータス（）
         scalar_stats = {}
         loss = 0
+        iou = 0
 
-        if "test" in batch["meta"]:
-            loss = torch.tensor(0).to(batch["img"].device)
-            return output, loss, {}
+        loss = self.criterion(output, target)
+        iou = self.metrics(output, target)
 
-        loss = self.criterion(output, batch["cls_num"])
-        iou = self.metrics(output[-1], batch["msk"])
-
-        scalar_stats.update({"loss": loss})
+        scalar_stats.update({"loss": loss, "iou": iou})
         return output, loss, scalar_stats

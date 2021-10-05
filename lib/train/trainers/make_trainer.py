@@ -6,10 +6,14 @@ sys.path.append("../../../")
 from yacs.config import CfgNode
 
 from lib.train.trainers.classify import ClassifyNetworkWrapper
+from lib.train.trainers.semantic_segm import SemanticSegmentationNetworkWrapper
 from lib.train.trainers.trainer import Trainer
 
 
-_wrapper_factory = {"classify": ClassifyNetworkWrapper}
+_wrapper_factory = {
+    "classify": ClassifyNetworkWrapper,
+    "semantic_segm": SemanticSegmentationNetworkWrapper,
+}
 
 
 def make_trainer(cfg: CfgNode, network, device: str = "cpu"):

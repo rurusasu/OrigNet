@@ -4,7 +4,7 @@ import segmentation_models_pytorch as smp
 # GitHub: https://github.com/qubvel/segmentation_models.pytorch
 
 
-def get_model(encoder_name, num_classes, activation=None):
+def GetUNetPP(encoder_name, num_classes, activation=None):
     if activation is not None:
         model = smp.UnetPlusPlus(
             encoder_name=encoder_name,

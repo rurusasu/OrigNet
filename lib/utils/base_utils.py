@@ -69,7 +69,6 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
         # クラス名と label_num を対応させる辞書を作成
         class_to_idx[cls_name] = i
 
-        # クラス名ディレクトリ内の file_ext にヒットするパスを全探索
         if os.path.exists(os.path.join(p, "imgs")) and os.path.exists(
             os.path.join(p, "masks")
         ):
@@ -86,6 +85,8 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
                 if os.path.isfile(msk_pth) and os.path.splitext(msk_pth)[1] in file_ext:
                     # マスク画像データパスをリストに格納
                     msks.append(msk_pth)
+
+        # クラス名ディレクトリ内の file_ext にヒットするパスを全探索
         else:
             # ディレクトリ内のすべての画像を読みだす．
             for img_pth in glob(os.path.join(p, "**"), recursive=True):
@@ -115,13 +116,20 @@ def LoadImgs(
     imgs = {}
     # 画像を読みだす
     img_fp = img_fps[img_id]
-    img = Image.open(img_fp)
+    # 注意していただきたいのは、マスクをRGBに変換していないことです。なぜなら、それぞれの色は異なるインスタンスに対応しており、0はバックグラウンドだからです。
+    img = Image.open(img_fp).convert("RGB")
     # PIL -> OpenCV 型(numpy)に変換
     img = np.array(img, dtype=np.uint8)
 
     if msk_fps:
         msk_fp = msk_fps[img_id]
         msk = cv2.imread(msk_fp, 0)
+        # msk = Image.open(msk_fp)
+        # msk = np.array(msk)
+
+        assert img.shape[0] == msk.shape[0], "サイズ不一致"
+        assert img.shape[1] == msk.shape[1], "サイズ不一致"
+
     else:
         msk = []
 

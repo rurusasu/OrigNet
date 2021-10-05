@@ -9,7 +9,6 @@ from typing import Type, Union, Dict, List
 
 import numpy as np
 import torch.utils.data as data
-from PIL import Image
 from torchvision import transforms
 from yacs.config import CfgNode
 

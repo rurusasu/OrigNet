@@ -1,4 +1,5 @@
 import torch
+from torch.functional import chain_matmul
 from lib.utils.optimizer.radam import RAdam
 
 _optimizer_factory = {"adam": torch.optim.Adam, "radam": RAdam, "sgd": torch.optim.SGD}
@@ -18,6 +19,10 @@ def make_optimizer(cfg, network):
     params = []
     lr = cfg.train.lr
     weight_decay = cfg.train.weight_decay
+    if cfg.model in _TransferLearningRateParam:
+        check_param = _TransferLearningRateParam[cfg.model]
+    else:
+        check_param = []
 
     # --------------------------------------- #
     # 層ごとにハイパ－パラメタを設定する #
@@ -25,8 +30,11 @@ def make_optimizer(cfg, network):
     for key, value in network.named_parameters():
         if not value.requires_grad:
             continue
-        if key in _TransferLearningRateParam[cfg.model]:
-            params += [{"params": [value], "lr": lr * 10, "weight_decay": weight_decay}]
+        if check_param:
+            if key in check_param:
+                params += [
+                    {"params": [value], "lr": lr * 10, "weight_decay": weight_decay}
+                ]
         else:
             params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
 

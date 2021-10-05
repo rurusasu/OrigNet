@@ -26,7 +26,8 @@ def GetCNN(cfg):
         raise ValueError(f"The specified cfg.network={arch} does not exist.")
 
     if "num_classes" not in cfg and "train_type" not in cfg:
-        raise ValueError("The required config parameter for `get_network` is not set.")
+        raise ValueError("The required config parameter for `GetCNN` is not set.")
+
     get_model = _network_factory[arch]
 
     # 転移学習を行う場合
