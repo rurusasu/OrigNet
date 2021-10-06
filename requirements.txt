@@ -1,3 +1,4 @@
+albumentations
 black
 easydict
 flake8
@@ -5,8 +6,10 @@ matplotlib
 numpy
 opencv-python
 Pillow
+pycocotools
 PyYAML
 scikit-learn
+scikit-image
 seaborn
 segmentation-models-pytorch
 tensorboardX
