@@ -6,9 +6,13 @@ sys.path.append("../../../")
 from yacs.config import CfgNode
 
 from lib.evaluators.tasks.classify import ClassifyEvaluator
+from lib.evaluators.tasks.semantic_segm import SegmentationEvaluator
 
 
-_evaluator_factory = {"classify": ClassifyEvaluator}
+_evaluator_factory = {
+    "classify": ClassifyEvaluator,
+    "semantic_segm": SegmentationEvaluator,
+}
 
 
 def make_evaluator(cfg: CfgNode) -> object:

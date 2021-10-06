@@ -21,7 +21,7 @@ def test(cfg: CfgNode):
     # 検証用のデータローダーを作成
     val_loader = make_data_loader(cfg, is_train=False)
 
-    cfg.num_classes = len(val_loader.dataset.classes)
+    cfg.num_classes = len(val_loader.dataset.cls_names)
     network = make_network(cfg).to(device)
 
     trainer = make_trainer(cfg, network, device)
@@ -44,24 +44,30 @@ def main(cfg):
 
 if __name__ == "__main__":
     cfg = CfgNode()
-    cfg.task = "classify"
-    cfg.network = "cnns"
-    cfg.model = "res_18"
+    cfg.cls_names = ["laptop", "tv"]
+    cfg.task = "semantic_segm"
+    cfg.network = "smp"
+    cfg.model = "unetpp"
+    cfg.encoder_name = "resnet18"
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"
-    cfg.img_width = 200
-    cfg.img_height = 200
+    cfg.img_width = 224
+    cfg.img_height = 224
+    cfg.resume = True  # 追加学習するか
     cfg.record_dir = "record"
     cfg.ep_iter = -1
     cfg.skip_eval = False
     cfg.train = CfgNode()
     cfg.train.criterion = ""
+    cfg.train.metrics = "iou"
     cfg.test = CfgNode()
     # cfg.test.dataset = "SampleTest"
-    cfg.test.dataset = "BrakeRotorsTest"
+    # cfg.test.dataset = "BrakeRotorsTest"
+    cfg.test.dataset = "COCO2017Val"
     cfg.test.batch_size = 20
     cfg.test.num_workers = 4
-    cfg.test.batch_sampler = "image_size"
+    # cfg.test.batch_sampler = "image_size"
+    cfg.test.batch_sampler = ""
 
     main(cfg)

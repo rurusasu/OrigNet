@@ -76,6 +76,10 @@ class Trainer(object):
                 # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
                 self.scaler.scale(loss).backward()
 
+                # 【PyTorch】不要になった計算グラフを削除してメモリを節約
+                # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/
+                del loss  # 誤差逆伝播を実行後、計算グラフを削除
+
                 # グラデーションのスケールを解除し、optimizer.step()を呼び出すかスキップする。
                 self.scaler.step(optimizer)
                 # optimizer.step()

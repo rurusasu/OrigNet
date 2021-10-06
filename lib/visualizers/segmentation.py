@@ -10,7 +10,13 @@ def visualize(**imgs: torch.Tensor):
     for i, (name, img) in enumerate(imgs.items()):
         # img = (img.to("cpu").detach().numpy().transpose(1, 2, 0)).astype(np.uint8)
         if len(img) > 0:
-            img = img.numpy().copy().transpose(1, 2, 0)
+            # もし，画像がグレー階調もしくはRGBの場合
+            if img.size()[0] == 1 or img.size()[0] == 3:
+                img = img.numpy().copy().transpose(1, 2, 0)
+            else:  # それ以外の場合(画像が One Hot Label の場合)
+                img = torch.argmax(img, dim=0).cpu()
+                img = img.numpy().copy().transpose(1, 0)
+
             # img = cv2.resize(img, (w, h))
             plt.subplot(1, n, i + 1)
             plt.xticks([])

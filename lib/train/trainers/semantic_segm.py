@@ -45,6 +45,7 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
 
         loss = self.criterion(output, target)
         iou = self.metrics(output, target)
+        del batch  # loss と iou 計算後 batch を削除してメモリを確保
 
         scalar_stats.update({"loss": loss, "iou": iou})
         return output, loss, scalar_stats
