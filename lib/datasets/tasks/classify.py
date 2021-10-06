@@ -88,7 +88,7 @@ class ClassifyDataset(data.Dataset):
             raise TypeError("Invalid type for variable index")
 
         # images (rgb, mask) の読み出し
-        imgs = LoadImgs(self.img_fps, img_id, self.msks)
+        imgs = LoadImgs(self.img_fps, img_id)
 
         if len(imgs["img"].shape) == 2:
             imgs["img"] = np.stack([imgs["img"], imgs["img"], imgs["img"]], axis=2)
@@ -107,9 +107,8 @@ class ClassifyDataset(data.Dataset):
 
         ret = {
             "img": imgs["img"],
-            "msk": imgs["msk"],
-            "meta": self.split,
             "target": self.targets[img_id],
+            "meta": self.split,
             "cls_names": self.cls_names[self.targets[img_id]],
         }
         return ret

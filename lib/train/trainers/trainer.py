@@ -13,7 +13,7 @@ from lib.utils.base_utils import SelectDevice
 
 
 class Trainer(object):
-    def __init__(self, network, device: str = "cpu"):
+    def __init__(self, network, device: str = "cpu", use_amp: bool = True):
         """
         device 引数について不明な場合は以下を参照．
         REF: https://note.nkmk.me/python-pytorch-device-to-cuda-cpu/
@@ -31,7 +31,9 @@ class Trainer(object):
         else:
             network = DataParallel(network, device_ids=num_device)
         self.network = network.to(device)
-        self.scaler = amp.GradScaler(enabled=False)
+        self.use_amp = 1 - use_amp
+        # ---- amp setting ---- #
+        self.scaler = amp.GradScaler(enabled=bool(self.use_amp))
         self.device = torch.device(device)
 
     def reduce_loss_stats(self, loss_stats: dict) -> dict:
@@ -60,7 +62,9 @@ class Trainer(object):
                 # optimizer の初期化
                 optimizer.zero_grad()
                 # 演算を混合精度でキャスト
-                with amp.autocast():
+                with amp.autocast(enabled=bool(self.use_amp)):
+                    batch["img"] = batch["img"].to(torch.float32)
+                    batch["target"] = batch["target"].to(torch.float32)
                     output, loss, loss_stats = self.network(batch)
                     if loss.ndim != 0:
                         # 損失の平均値を計算
@@ -134,9 +138,11 @@ class Trainer(object):
             # batch["img"] = batch["img"].cuda()
             # if batch["msk"]:
             #     batch["msk"] = batch["msk"].cuda()
-
             with torch.no_grad():
-                output, loss, loss_stats = self.network(batch)
+                with amp.autocast(enabled=bool(self.use_amp)):
+                    batch["img"] = batch["img"].to(torch.float32)
+                    batch["target"] = batch["target"].to(torch.float32)
+                    output, loss, loss_stats = self.network(batch)
                 if evaluator is not None:
                     result = evaluator.evaluate(output=output, batch=batch)
 

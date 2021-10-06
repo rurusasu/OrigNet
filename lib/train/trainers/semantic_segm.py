@@ -1,6 +1,11 @@
+import sys
+
+sys.path.append("../../../")
+
 import torch
 import torch.nn as nn
 import segmentation_models_pytorch as smp
+from torch.autograd import Variable
 from yacs.config import CfgNode
 
 from lib.train.metricses import make_metrics
@@ -31,7 +36,7 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
 
     def forward(self, batch: int):
         input = batch["img"].to(self.device)
-        target = batch["msk"].to(self.device)
+        target = Variable(batch["target"]).to(self.device)
         output = self.net.forward(input)
         # スカラステータス（）
         scalar_stats = {}
@@ -43,3 +48,12 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
 
         scalar_stats.update({"loss": loss, "iou": iou})
         return output, loss, scalar_stats
+
+
+if __name__ == "__main__":
+    cfg = CfgNode()
+    cfg.train = CfgNode()
+    cfg.train.metrics = "iou"
+
+    f = make_metrics(cfg)
+    print(f)

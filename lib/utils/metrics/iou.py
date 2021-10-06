@@ -2,25 +2,29 @@ import numpy as np
 import torch
 
 
-class iou_score(object):
-    def __init__(self, threshold: float = 0.5, smooth: float = 1e-5):
-        if 0 <= threshold <= 1:
-            self.threshold = threshold
-        else:
-            raise ValueError(f"Invalid value for threshold: {threshold}")
-        self.smooth = smooth
+def iou_score(
+    pred_data: np.ndarray,
+    target: np.ndarray,
+    threshold: float = 0.5,
+    smooth: float = 1e-5,
+) -> torch.Tensor:
+    if 0 <= threshold <= 1:
+        pass
+    else:
+        raise ValueError(f"Invalid value for threshold: {threshold}")
 
-    def calc(self, output: np.ndarray, target: np.ndarray):
-        if torch.is_tensor(output):
-            output = torch.sigmoid(output).data.cpu().numpy()
-        if torch.is_tensor(target):
-            target = target.data.cpu().numpy()
-        output_ = output > self.threshold
-        target_ = target > self.threshold
-        intersection = (output_ & target_).sum()
-        union = (output_ | target_).sum()
+    if torch.is_tensor(pred_data):
+        pred_data = torch.sigmoid(pred_data).data.cpu().numpy()
+    if torch.is_tensor(target):
+        target = target.data.cpu().numpy()
+    pred_data_ = pred_data > threshold
+    target_ = target > threshold
+    intersection = (pred_data_ & target_).sum()
+    union = (pred_data_ | target_).sum()
 
-        return (intersection + self.smooth) / (union + self.smooth)
+    iou = np.array((intersection + smooth) / (union + smooth), dtype=np.float32)
+    iou = torch.from_numpy(iou.astype(np.float32)).clone()
+    return iou
 
 
 def dice_coef(output, target):

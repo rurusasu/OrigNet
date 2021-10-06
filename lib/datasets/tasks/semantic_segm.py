@@ -87,16 +87,18 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)
     cats = coco.loadCats(catIds)
-    train_mask = np.zeros(input_img_size)
+    mask = np.zeros(input_img_size)
+    class_names = []
     for a in range(len(anns)):
         className = getClassName(anns[a]["category_id"], cats)
         pixel_value = cls_names.index(className) + 1
         new_mask = cv2.resize(coco.annToMask(anns[a]) * pixel_value, input_img_size)
-        train_mask = np.maximum(new_mask, train_mask)
+        mask = np.maximum(new_mask, mask)
+        class_names.append(className)
 
     # Add extra dimension for parity with train_img size [X * X * 3]
-    train_mask = train_mask.reshape(input_img_size[0], input_img_size[1], 1)
-    return train_mask
+    mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+    return mask, class_names
 
 
 def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
@@ -176,12 +178,13 @@ class SegmentationDataset(Dataset):
             imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
         )
 
+        class_names = ["object"]
         ### Create Mask ###
         if self.mask_type == "binary":
             mask = getBinaryMask(img_info, self.coco, self.catIds, input_img_size)
 
         elif self.mask_type == "normal":
-            mask = getNormalMask(
+            mask, class_names = getNormalMask(
                 img_info, self.cls_names, self.coco, self.catIds, input_img_size
             )
 
@@ -193,7 +196,13 @@ class SegmentationDataset(Dataset):
         # img = torch.from_numpy(img.astype(np.float32)).clone()
         # mask = torch.from_numpy(mask.astype(np.float32)).clone()
 
-        return img, mask
+        ret = {
+            "img": img,
+            "target": mask,
+            "meta": self.split,
+            "cls_names": self.cls_names,
+        }
+        return ret
 
     def __len__(self):
         return self.dataset_size
@@ -235,11 +244,11 @@ if __name__ == "__main__":
     cfg.img_width = 200
     cfg.img_height = 200
     cfg.train = CfgNode()
-    cfg.train.dataset = "COCO2017Train"
+    cfg.train.dataset = "COCO2017Val"
     cfg.train.batch_size = 4
     cfg.train.num_workers = 2
     cfg.train.batch_sampler = ""
 
     dloader = make_data_loader(cfg, is_train=True)
     for iter, batch in enumerate(dloader):
-        img, mask = value["img"], value["mask"]
+        img, mask = batch["img"], batch["mask"]

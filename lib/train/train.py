@@ -89,6 +89,44 @@ if __name__ == "__main__":
     import traceback
     from yacs.config import CfgNode as CN
 
+    """
+    cfg = CN()
+    cfg.task = "classify"
+    cfg.network = "cnns"
+    cfg.model = "res_18"
+    cfg.cls_names = ["laptop", "tv"]
+    cfg.encoder_name = "resnet18"
+    cfg.model_dir = "model"
+    cfg.train_type = "transfer"  # or scratch
+    # cfg.train_type = "scratch"
+    cfg.img_width = 224
+    cfg.img_height = 224
+    cfg.resume = True  # 追加学習するか
+    cfg.record_dir = "record"
+    cfg.ep_iter = -1
+    cfg.save_ep = 5
+    cfg.eval_ep = 1
+    cfg.train = CN()
+    cfg.train.epoch = 15
+    cfg.train.dataset = "SampleTrain"
+    cfg.train.batch_size = 4
+    cfg.train.num_workers = 2
+    cfg.train.batch_sampler = ""
+    cfg.train.optim = "adam"
+    cfg.train.criterion = ""
+    cfg.train.lr = 1e-3
+    cfg.train.scheduler = "step_lr"
+    cfg.train.weight_decay = 0.0
+    cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+    cfg.train.gamma = 0.5
+    cfg.train.metrics = "iou"
+    cfg.test = CN()
+    cfg.test.dataset = "SampleTest"
+    cfg.test.batch_size = 20
+    cfg.test.num_workers = 2
+    cfg.test.batch_sampler = ""
+    """
+
     cfg = CN()
     # cfg.task = "classify"
     # cfg.network = "cnns"
@@ -109,13 +147,13 @@ if __name__ == "__main__":
     cfg.save_ep = 5
     cfg.eval_ep = 1
     cfg.train = CN()
-    cfg.train.epoch = 15
+    cfg.train.epoch = 1000
     # cfg.train.dataset = "SampleTrain"
     # cfg.train.dataset = "Sample_2Train"
     # cfg.train.dataset = "BrakeRotorsTrain"
     # cfg.train.dataset = "LinemodTrain"
-    cfg.train.dataset = "COCO2017Train"
-    cfg.train.batch_size = 4
+    cfg.train.dataset = "COCO2017Val"
+    cfg.train.batch_size = 20
     cfg.train.num_workers = 2
     cfg.train.batch_sampler = ""
     cfg.train.optim = "adam"

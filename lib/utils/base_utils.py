@@ -1,6 +1,6 @@
 import os
 from glob import glob
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import cv2
 import numpy as np
@@ -100,7 +100,7 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
 
 
 def LoadImgs(
-    img_fps: List[str], img_id: int, msk_fps: List[str] = []
+    img_fps: List[str], img_id: int, msk_fps: Union[List[str], None] = None
 ) -> Dict[np.ndarray, np.ndarray]:
     """
     画像パスのリストから、id で指定された画像を読みだす関数
@@ -108,7 +108,7 @@ def LoadImgs(
     Args:
         img_fps (List[str]): 画像パスのリスト
         img_id (int): 読みだすパス番号
-        msk_fps (List[str]): マスク画像パスのリスト
+        msk_fps (Union[List[str], None], optional): マスク画像パスのリスト．Default to None.
 
     Returns:
         imgs (Dict[img:np.ndarray, msk:np.ndarray]): 画像とそのマスク画像が保存された辞書
