@@ -1,84 +1,164 @@
 import os
 import sys
+import random
+from typing import List, Literal, Union
 
-sys.path.append("..")
-sys.path.append("../../")
 sys.path.append("../../../")
 
-from typing import Type, Union, Dict, List
-
+import cv2
 import numpy as np
-import torch.utils.data as data
-from PIL import Image
-from torchvision import transforms
+import skimage.io as io
+import torch
+from pycocotools.coco import COCO
+from torch.utils.data import Dataset, dataloader
+from torchvision.transforms import Compose
 from yacs.config import CfgNode
 
-from datasets.augmentation import augmentation
 from lib.config.config import pth
-from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
+
+### For visualizing the outputs ###
+import matplotlib.pyplot as plt
 
 
-class SegmentationDataset(data.Dataset):
-    """data_root の子ディレクトリ名がクラスラベルという仮定のもとデータセットを作成するクラス．
-    データセットは以下のような構成を仮定
-    dataset_root
-          |
-          |- train
-          |     |
-          |     |- ObjectName_1
-          |     |           |
-          |     |           |- images
-          |     |           |
-          |     |           |- masks
-          |     |
-          |     |- ObjectName_2
-          |     |
-          |
-          |- test
+def getClassName(classID: int, cats: dict):
+    for i in range(len(cats)):
+        if cats[i]["id"] == classID:
+            return cats[i]["name"]
+    return "None"
+
+
+def FilterDataset(
+    data_root,
+    cls_names: Union[List[str], None] = None,
+    split: Literal["train", "val", "test"] = "train",
+):
+    """フィルタしたクラスのオブジェクトが映る画像をすべて読みだす関数
+
+    Args:
+        data_root (str): データセットの root ディレクトリ．
+        cls_names (Union(List[str], None), optional): 抽出するクラス名のリスト. Defaults to None.
+        split (Literal["train", "val", "test"], optional): 読みだすデータセットの種類（'train' or 'val', or 'test'）. Defaults to 'train'.
+
+    Returns:
+        [type]: [description]
     """
+    # initialize COCO api for instance annotations
+    annFile = "{}/annotations/instances_{}2017.json".format(data_root, split)
+    coco = COCO(annFile)
 
+    images = []
+    if cls_names != None:
+        # リスト内の個々のクラスに対してイテレートする
+        for className in cls_names:
+            # 与えられたカテゴリを含むすべての画像を取得する
+            catIds = coco.getCatIds(catNms=className)
+            imgIds = coco.getImgIds(catIds=catIds)
+            images += coco.loadImgs(imgIds)
+
+    else:
+        imgIds = coco.getImgIds()
+        images = coco.loadImgs(imgIds)
+
+    # Now, filter out the repeated images
+    unique_images = []
+    for i in range(len(images)):
+        if images[i] not in unique_images:
+            unique_images.append(images[i])
+
+    random.shuffle(unique_images)
+    dataset_size = len(unique_images)
+
+    return unique_images, dataset_size, coco
+
+
+def getImage(imgObj, img_folder: str, input_img_size: tuple) -> np.ndarray:
+    # Read and normalize an image
+    img = io.imread(os.path.join(img_folder, imgObj["file_name"])) / 255.0
+    # Resize
+    img = cv2.resize(img, input_img_size)
+    if len(img.shape) == 3 and img.shape[2] == 3:  # If it is a RGB 3 channel image
+        return img
+    else:  # 白黒の画像を扱う場合は、次元を3にする
+        stacked_img = np.stack((img,) * 3, axis=-1)
+        return stacked_img
+
+
+def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
+    annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
+    anns = coco.loadAnns(annIds)
+    cats = coco.loadCats(catIds)
+    train_mask = np.zeros(input_img_size)
+    for a in range(len(anns)):
+        className = getClassName(anns[a]["category_id"], cats)
+        pixel_value = cls_names.index(className) + 1
+        new_mask = cv2.resize(coco.annToMask(anns[a]) * pixel_value, input_img_size)
+        train_mask = np.maximum(new_mask, train_mask)
+
+    # Add extra dimension for parity with train_img size [X * X * 3]
+    train_mask = train_mask.reshape(input_img_size[0], input_img_size[1], 1)
+    return train_mask
+
+
+def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
+    annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
+    anns = coco.loadAnns(annIds)  # アノテーションを読みだす
+    # train_mask = np.zeros(input_img_size)
+    mask = np.zeros(input_img_size)
+    for id in range(len(anns)):
+        new_mask = cv2.resize(coco.annToMask(anns[id]), input_img_size)
+
+        # Threshold because resizing may cause extraneous values
+        new_mask[new_mask >= 0.5] = 1
+        new_mask[new_mask < 0.5] = 0
+
+        # 画素の位置ごとの最大値を返す
+        mask = np.maximum(new_mask, mask)
+
+    # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
+    mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+    return mask
+
+
+class SegmentationDataset(Dataset):
     def __init__(
         self,
         cfg: CfgNode,
         data_root: str,
-        split: str,
-        cls_names: List[str] = None,
-        transforms: transforms = None,
-    ) -> None:
-        super(SegmentationDataset, self).__init__()
-
+        cls_names: Union[List[str], None] = None,
+        # input_img_size: tuple = (224, 224),
+        split: Literal["train", "val", "test"] = "train",
+        mask_type: Literal["binary", "normal"] = "normal",
+        transforms: Union[Compose, None] = None,
+    ):
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
-        (
-            self.classes,
-            self.class_to_idx,
-            self.imgs,
-            self.targets,
-            self.msks,
-        ) = GetImgFpsAndLabels(self.data_root)
+        self.cls_names = cfg.cls_names
+        # self.input_img_size = input_img_size
         self.split = split
-        self._transforms = transforms
+        self.mask_type = mask_type
 
-        # 入力されたクラス名が None 以外でかつ取得したクラスラベルに含まれている場合
-        if cls_names is not None and cls_names in self.classes:
-            self.cls_names = cls_names
-        else:
-            self.cls_names = None
+        # self.img_dir = os.path.join(self.data_root, self.mode)
+        self.img_dir = os.path.join(self.data_root, self.split)
 
-    def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
-        """
-        データセット中から `img_id` で指定された番号のデータを返す関数．
+        # imgs_info = {
+        # license: int,
+        # file_name: str, 例: 000000495776.jpg
+        # coco_url: str, 例: http://images.cocodataset.org/train2017/000000495776.jpg
+        # height: int, 例 375
+        # width: int, 例 500
+        # date_captured, 例 2013-11-24 07:55:36
+        # flickr_url: str, 例 http://farm1.staticflickr.com/21/30368166_92245cce3f_z.jpg
+        # id: int 例 495776
+        # }
+        self.imgs_info, self.dataset_size, self.coco = FilterDataset(
+            self.data_root, self.cls_names, self.split
+        )
+        self.catIds = self.coco.getCatIds(catNms=self.cls_names)
 
-        Arg:
-            img_id (Type[Union[int, tuple]]): 読みだすデータの番号
+        # Data Augmentation
+        self.transforms = transforms
 
-        Return:
-            ret (Dict["img": torch.tensor,
-                         "msk": torch.tensor,
-                         "meta": str,
-                         "target": int,
-                         "cls_name": str]):
-        """
+    def __getitem__(self, img_id):
         if type(img_id) is tuple:
             img_id, height, width = img_id
         elif (
@@ -88,48 +168,78 @@ class SegmentationDataset(data.Dataset):
         else:
             raise TypeError("Invalid type for variable index")
 
-        # images (rgb, mask) の読み出し
-        imgs = LoadImgs(self.imgs, img_id, self.msks)
-        # インスタンスは異なる色でエンコードされます。
-        obj_ids = np.unique(imgs["msk"])
-        # 最初のIDは背景なので削除します
-        obj_ids = obj_ids[1:]
+        img_info = self.imgs_info[img_id]
 
-        # カラー・エンコードされたマスクを、True/Falseで表現されたマスクに変換します
-        masks = msk == obj_ids[:, None, None]
+        input_img_size = (width, height)
+        ### Retrieve Image ###
+        img = getImage(
+            imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
+        )
 
-        # `OpenCV` および `numpy` を用いたデータ拡張
-        if self.split == "train":
-            imgs = augmentation(imgs, height, width, self.split)
+        ### Create Mask ###
+        if self.mask_type == "binary":
+            mask = getBinaryMask(img_info, self.coco, self.catIds, input_img_size)
 
-        # `transforms`を用いた変換がある場合は行う．
-        if self._transforms is not None:
-            imgs["img"] = self._transforms(imgs["img"])
+        elif self.mask_type == "normal":
+            mask = getNormalMask(
+                img_info, self.cls_names, self.coco, self.catIds, input_img_size
+            )
 
-        ret = {
-            "img": imgs["img"],
-            "msk": imgs["msk"],
-            "meta": self.split,
-            "target": self.targets[img_id],
-            "cls_name": self.classes[self.targets[img_id]],
-        }
-        return ret
+        if self.transforms:
+            img = self.transforms(img)
+            mask = self.transforms(mask)
+
+        # ndarray -> tensor
+        # img = torch.from_numpy(img.astype(np.float32)).clone()
+        # mask = torch.from_numpy(mask.astype(np.float32)).clone()
+
+        return img, mask
 
     def __len__(self):
-        """ディレクトリ内の画像ファイル数を返す関数．"""
-        return len(self.imgs)
+        return self.dataset_size
+
+
+# helper function for data visualization
+def visualize(**images):
+    """PLot images in one row."""
+    n = len(images)
+    plt.figure(figsize=(16, 5))
+    for i, (name, image) in enumerate(images.items()):
+        plt.subplot(1, n, i + 1)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title(" ".join(name.split("_")).title())
+        plt.imshow(image)
+    plt.show()
+
+
+# ------------------------ #
+# Augmentation Fuction #
+# ------------------------ #
+class ToTensor(object):
+    def __call__(self, x, **kwargs):
+        return x.transpose(2, 0, 1).astype("float32")
+
+
+def get_train_augmentation():
+    _transform = Compose([ToTensor()])
+    return _transform
 
 
 if __name__ == "__main__":
-    from yacs.config import CfgNode as CN
-    from lib.datasets.make_datasets import make_dataset
+    from lib.datasets.make_datasets import make_data_loader
 
-    cfg = CN()
+    cfg = CfgNode()
     cfg.task = "semantic_segm"
+    cfg.cls_names = ["laptop", "tv"]
     cfg.img_width = 200
     cfg.img_height = 200
-    cfg.train = CN()
-    cfg.train.dataset = "LinemodTrain"
+    cfg.train = CfgNode()
+    cfg.train.dataset = "COCO2017Train"
+    cfg.train.batch_size = 4
+    cfg.train.num_workers = 2
+    cfg.train.batch_sampler = ""
 
-    dataset = make_dataset(cfg, cfg.train.dataset)
-    print(dataset)
+    dloader = make_data_loader(cfg, is_train=True)
+    for iter, batch in enumerate(dloader):
+        img, mask = value["img"], value["mask"]

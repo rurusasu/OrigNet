@@ -1,5 +1,4 @@
 import datetime
-from re import S
 import sys
 import time
 
@@ -57,7 +56,6 @@ class Trainer(object):
                 # --------------- #
                 # training stage #
                 # --------------- #
-                """
                 # 混合精度テスト
                 # optimizer の初期化
                 optimizer.zero_grad()
@@ -78,8 +76,8 @@ class Trainer(object):
                 self.scaler.step(optimizer)
                 # optimizer.step()
                 self.scaler.update()
-                """
 
+                """
                 output, loss, loss_stats = self.network(batch)
                 if loss.ndim != 0:
                     # 損失の平均値を計算
@@ -94,6 +92,7 @@ class Trainer(object):
                 torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
                 # パラメタ更新
                 optimizer.step()
+                """
 
                 # data recording stage
                 loss_stats = self.reduce_loss_stats(loss_stats)

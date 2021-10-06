@@ -9,6 +9,7 @@ from typing import Type, Union, Dict, List
 
 import numpy as np
 import torch.utils.data as data
+from PIL import Image
 from torchvision import transforms
 from yacs.config import CfgNode
 
@@ -17,16 +18,21 @@ from lib.config.config import pth
 from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
 
 
-class ClassifyDataset(data.Dataset):
+class SegmentationDataset(data.Dataset):
     """data_root の子ディレクトリ名がクラスラベルという仮定のもとデータセットを作成するクラス．
     データセットは以下のような構成を仮定
     dataset_root
           |
           |- train
           |     |
-          |     |- OK
+          |     |- ObjectName_1
+          |     |           |
+          |     |           |- images
+          |     |           |
+          |     |           |- masks
           |     |
-          |     |- NG
+          |     |- ObjectName_2
+          |     |
           |
           |- test
     """
@@ -36,33 +42,28 @@ class ClassifyDataset(data.Dataset):
         cfg: CfgNode,
         data_root: str,
         split: str,
-        cls_names: List[str] = None,
+        cls_names: Union[List[str], None] = None,
         transforms: transforms = None,
     ) -> None:
-        super(ClassifyDataset, self).__init__()
+        super(SegmentationDataset, self).__init__()
 
-        self.file_ext = {
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".ppm",
-            ".bmp",
-            ".pgm",
-            ".tif",
-            ".tiff",
-            ".webp",
-        }
         self.cfg = cfg
-        self.split = split
-        self.img_dir = os.path.join(pth.DATA_DIR, data_root, self.split)
+        self.data_root = os.path.join(pth.DATA_DIR, data_root)
         (
-            self.cls_names,
+            self.classes,
             self.class_to_idx,
-            self.img_fps,
+            self.imgs,
             self.targets,
-            _,
-        ) = GetImgFpsAndLabels(self.img_dir)
+            self.msks,
+        ) = GetImgFpsAndLabels(self.data_root)
+        self.split = split
         self._transforms = transforms
+
+        # 入力されたクラス名が None 以外でかつ取得したクラスラベルに含まれている場合
+        if cls_names is not None and cls_names in self.classes:
+            self.cls_names = cls_names
+        else:
+            self.cls_names = None
 
     def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
         """
@@ -88,14 +89,14 @@ class ClassifyDataset(data.Dataset):
             raise TypeError("Invalid type for variable index")
 
         # images (rgb, mask) の読み出し
-        imgs = LoadImgs(self.img_fps, img_id, self.msks)
+        imgs = LoadImgs(self.imgs, img_id, self.msks)
+        # インスタンスは異なる色でエンコードされます。
+        obj_ids = np.unique(imgs["msk"])
+        # 最初のIDは背景なので削除します
+        obj_ids = obj_ids[1:]
 
-        if len(imgs["img"].shape) == 2:
-            imgs["img"] = np.stack([imgs["img"], imgs["img"], imgs["img"]], axis=2)
-        elif len(imgs["img"].shape) == 3:
-            pass
-        else:
-            raise ValueError("Incorrect way of giving image size.")
+        # カラー・エンコードされたマスクを、True/Falseで表現されたマスクに変換します
+        masks = msk == obj_ids[:, None, None]
 
         # `OpenCV` および `numpy` を用いたデータ拡張
         if self.split == "train":
@@ -110,13 +111,13 @@ class ClassifyDataset(data.Dataset):
             "msk": imgs["msk"],
             "meta": self.split,
             "target": self.targets[img_id],
-            "cls_names": self.cls_names[self.targets[img_id]],
+            "cls_name": self.classes[self.targets[img_id]],
         }
         return ret
 
     def __len__(self):
         """ディレクトリ内の画像ファイル数を返す関数．"""
-        return len(self.img_fps)
+        return len(self.imgs)
 
 
 if __name__ == "__main__":
@@ -124,11 +125,11 @@ if __name__ == "__main__":
     from lib.datasets.make_datasets import make_dataset
 
     cfg = CN()
-    cfg.task = "classify"
+    cfg.task = "semantic_segm"
     cfg.img_width = 200
     cfg.img_height = 200
     cfg.train = CN()
-    cfg.train.dataset = "SampleTrain"
+    cfg.train.dataset = "LinemodTrain"
 
     dataset = make_dataset(cfg, cfg.train.dataset)
     print(dataset)

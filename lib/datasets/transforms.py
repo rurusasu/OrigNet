@@ -1,16 +1,30 @@
-import torch
+# from torchvision import transforms
 from torchvision import transforms
-from torchvision.transforms import Compose, ToTensor
+import albumentations as albu
 from yacs.config import CfgNode
 
 
-# class ToTensor(object):
-#    def __call__(self, img: torch.Tensor) -> torch.Tensor:
-#        # return np.asarray(img).astype(np.float32) / 255.0
-#        return img / 255.0
+# def to_tensor(x, **kwargs):
+#    x = torch.from_numpy(x.astype(np.float32)).clone()
+# x.transpose(2, 0, 1).astype("float32")
+#    return x
+
+# albu_transforms = albu.Compose(
+#     [
+#         albu.HorizontalFlip(p=0.5),
+#         albu.RandomBrightnessContrast(p=0.2),
+#     ]
+# )
 
 
-def make_transforms(cfg: CfgNode, is_train: bool) -> transforms:
+# def albumentations_transform(image, transform=albu_transforms):
+#     if transform:
+#         augmented = transform(image=image)
+#         image = augmented["image"]
+#     return image
+
+
+def make_transforms(cfg: CfgNode, is_train: bool) -> albu.Compose:
     """データ拡張に使用する Transforms を作成する関数
     Args:
         cfg (CfgNode): データセット名などのコンフィグ情報
@@ -20,29 +34,15 @@ def make_transforms(cfg: CfgNode, is_train: bool) -> transforms:
         (transforms): データ変換に使用する関数群
     """
     if is_train is True:
-        transform = Compose(
-            [
-                # Tensor型に変換する
-                ToTensor(),
-                # 画像をimg_width×img_heightの大きさに統一する
-                transforms.Resize((cfg.img_width, cfg.img_height)),
-                transforms.ColorJitter(0.1, 0.1, 0.05, 0.05),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
+        transform = [
+            # Tensor型に変換する
+            transforms.ToTensor(),
+            # transforms.Lambda(albumentations_transform),
+        ]
     else:
-        transform = Compose(
-            [
-                # Tensor型に変換する
-                ToTensor(),
-                # 画像をimg_width×img_heightの大きさに統一する
-                transforms.Resize((cfg.img_width, cfg.img_height)),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
+        transform = [
+            # Tensor型に変換する
+            transforms.ToTensor(),
+        ]
 
-    return transform
+    return transforms.Compose(transform)

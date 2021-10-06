@@ -32,6 +32,21 @@ class DatasetCatalog(object):
             "id": "Brake",
             "data_root": "BrakeRotors/casting_data/test",
         },
+        "COCO2017Train": {
+            "id": "COCO",
+            "data_root": "COCOdataset2017",
+            "split": "train",
+        },
+        "COCO2017Val": {
+            "id": "COCO",
+            "data_root": "COCOdataset2017",
+            "split": "val",
+        },
+        "COCO2017Test": {
+            "id": "COCO",
+            "data_root": "COCOdataset2017",
+            "split": "test"
+        },
         "LinemodTrain": {
             "id": "linemod",
             "data_root": "linemod/",
@@ -44,11 +59,15 @@ class DatasetCatalog(object):
         },
         "SampleTrain": {
             "id": "sample",
-            "data_root": "sample/train",
+            # "data_root": "sample/train",
+            "data_root": "sample",
+            "split": "train",
         },
         "SampleTest": {
             "id": "sample",
-            "data_root": "sample/test",
+            # "data_root": "sample/test",
+            "data_root": "sample",
+            "split": "test",
         },
         "Sample_2Train": {
             "id": "sample_2",

@@ -8,7 +8,7 @@ import skimage.io as io
 import torch
 from pycocotools.coco import COCO
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import Compose
 
 ### For visualizing the outputs ###
 import matplotlib.pyplot as plt
@@ -195,6 +195,11 @@ def visualize(**images):
 # ------------------------ #
 # Augmentation Fuction #
 # ------------------------ #
+class ToTensor(object):
+    def __call__(self, x, **kwargs):
+        return x.transpose(2, 0, 1).astype("float32")
+
+
 def get_train_augmentation():
     _transform = Compose([ToTensor()])
     return _transform
@@ -248,7 +253,7 @@ if __name__ == "__main__":
     print("model created !")
     preprocessing_fn = smp.encoders.get_preprocessing_fn(ENCODER, ENCODER_WEIGHTS)
 
-    BATCH_SIZE = 8
+    BATCH_SIZE = 4
     SHUFFLE = True
     NUM_WORKERS = 2
 

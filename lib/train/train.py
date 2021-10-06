@@ -31,12 +31,14 @@ def train(cfg: CfgNode) -> None:
 
     # cuda が存在する場合，cudaを使用する
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
+    torch.backends.cudnn.benchmark = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
     val_loader = make_data_loader(cfg, is_train=False)
 
-    cfg.num_classes = len(train_loader.dataset.classes)
+    cfg.num_classes = len(train_loader.dataset.cls_names)
     # 指定した device 上でネットワークを生成
     network = make_network(cfg).to(device)
 
@@ -88,13 +90,14 @@ if __name__ == "__main__":
     from yacs.config import CfgNode as CN
 
     cfg = CN()
-    cfg.task = "classify"
-    cfg.network = "cnns"
-    cfg.model = "res_18"
-    # cfg.task = "semantic_segm"
-    # cfg.network = "smp"
-    # cfg.model = "unetpp"
-    # cfg.encoder_name = "resnet18"
+    # cfg.task = "classify"
+    # cfg.network = "cnns"
+    # cfg.model = "res_18"
+    cfg.cls_names = ["laptop", "tv"]
+    cfg.task = "semantic_segm"
+    cfg.network = "smp"
+    cfg.model = "unetpp"
+    cfg.encoder_name = "resnet18"
     cfg.model_dir = "model"
     cfg.train_type = "transfer"  # or scratch
     # cfg.train_type = "scratch"
@@ -107,13 +110,14 @@ if __name__ == "__main__":
     cfg.eval_ep = 1
     cfg.train = CN()
     cfg.train.epoch = 15
-    cfg.train.dataset = "SampleTrain"
+    # cfg.train.dataset = "SampleTrain"
     # cfg.train.dataset = "Sample_2Train"
     # cfg.train.dataset = "BrakeRotorsTrain"
     # cfg.train.dataset = "LinemodTrain"
-    cfg.train.batch_size = 10
-    cfg.train.num_workers = 4
-    cfg.train.batch_sampler = "image_size"
+    cfg.train.dataset = "COCO2017Train"
+    cfg.train.batch_size = 4
+    cfg.train.num_workers = 2
+    cfg.train.batch_sampler = ""
     cfg.train.optim = "adam"
     cfg.train.criterion = ""
     cfg.train.lr = 1e-3
@@ -123,12 +127,13 @@ if __name__ == "__main__":
     cfg.train.gamma = 0.5
     cfg.train.metrics = "iou"
     cfg.test = CN()
-    cfg.test.dataset = "SampleTest"
+    # cfg.test.dataset = "SampleTest"
     # cfg.test.dataset = "Sample_2Test"
     # cfg.test.dataset = "LinemodTest"
+    cfg.test.dataset = "COCO2017Val"
     cfg.test.batch_size = 20
     cfg.test.num_workers = 2
-    cfg.test.batch_sampler = "image_size"
+    cfg.test.batch_sampler = ""
 
     torch.cuda.empty_cache()
     try:

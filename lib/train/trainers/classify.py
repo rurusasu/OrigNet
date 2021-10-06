@@ -2,6 +2,7 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 from yacs.config import CfgNode
 
 
@@ -29,7 +30,7 @@ class ClassifyNetworkWrapper(nn.Module):
 
     def forward(self, batch: Dict):
         input = batch["img"].to(self.device)
-        target = batch["target"].to(self.device)
+        target = Variable(batch["target"]).long().to(self.device)
 
         # 出力は，
         # [[0番目のクラス，0番目のクラス，...batchの大きさ分繰り返し],

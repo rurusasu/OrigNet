@@ -43,7 +43,7 @@ def make_dataset(
     # args["data_root"] = os.path.join(pth.DATA_DIR, args["data_root"])
     if transforms is not None:
         args["transforms"] = transforms
-    args["split"] = "train" if is_train else "test"
+    # args["split"] = "train" if is_train else "test"
     dataset = dataset(**args)
 
     return dataset
@@ -80,16 +80,16 @@ def _make_batch_data_sampler(
     Returns:
         [type]: [description]
     """
-    batch_sampler = torch.utils.data.sampler.BatchSampler(
-        sampler, batch_size, drop_last
-    )
-    if max_iter != -1:
-        batch_sampler = IterationBasedBatchSampler(batch_sampler, max_iter)
-
     if strategy == "image_size":
         batch_sampler = ImageSizeBatchSampler(
             sampler, batch_size, drop_last, 256, 480, 640
         )
+    else:
+        batch_sampler = torch.utils.data.sampler.BatchSampler(
+            sampler, batch_size, drop_last
+        )
+        if max_iter != -1:
+            batch_sampler = IterationBasedBatchSampler(batch_sampler, max_iter)
 
     return batch_sampler
 
