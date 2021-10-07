@@ -17,7 +17,7 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
     画像を入力，出力をそのクラスラベルとする画像分類に特化したモデルを作成する
     """
 
-    def __init__(self, cfg: CfgNode, net, device):
+    def __init__(self, cfg: CfgNode, net):
         super(SemanticSegmentationNetworkWrapper, self).__init__()
 
         if "train" not in cfg and "criterion" not in cfg.train:
@@ -25,7 +25,6 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
                 "The required parameter for `SemanticSegmentationNetworkWrapper` is not set."
             )
 
-        self.device = torch.device(device)
         self.net = net
 
         # 損失関数 (criterion) を選択
@@ -36,8 +35,6 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         self.metrics = smp.utils.metrics.IoU()
 
     def forward(self, input: torch.Tensor, target: torch.Tensor):
-        # input = batch["img"].to(self.device)
-        # target = Variable(batch["target"]).to(self.device)
         output = self.net.forward(input)
         # スカラステータス（）
         scalar_stats = {}
@@ -46,9 +43,13 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
 
         loss = self.criterion(output, target)
         iou = self.metrics(output, target)
-        del input, target  # loss と iou 計算後 batch を削除してメモリを確保
 
-        scalar_stats.update({"loss": loss, "iou": iou})
+        scalar_stats.update(
+            {"batch_loss": loss.detach().clone(), "batch_iou": iou.detach().clone()}
+        )
+
+        del input, target, iou  # loss と iou 計算後 batch を削除してメモリを確保
+
         return output, loss, scalar_stats
 
 

@@ -93,6 +93,8 @@ class Recorder(object):
         for k, v in image_stats.items():
             self.writer.add_image(pattern.format(k), v, step)
 
+        del loss_stats
+
     def state_dict(self):
         scalar_dict = {}
         scalar_dict["step"] = self.step

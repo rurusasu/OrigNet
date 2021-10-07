@@ -1,8 +1,5 @@
-from typing import Dict
-
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 from yacs.config import CfgNode
 
 
@@ -12,15 +9,13 @@ class ClassifyNetworkWrapper(nn.Module):
     画像を入力，出力をそのクラスラベルとする画像分類に特化したモデルを作成する
     """
 
-    def __init__(self, cfg: CfgNode, net, device):
+    def __init__(self, cfg: CfgNode, net):
         super(ClassifyNetworkWrapper, self).__init__()
 
         if "train" not in cfg and "criterion" not in cfg.train:
             raise ("The required parameter for `NetworkWrapper` is not set.")
-        self.device = torch.device(device)
         self.net = net
         self.criterion = cfg.train.criterion
-        self.num_classes = cfg.num_classes
 
         # lenarning_typeによって
         if "mse" in self.criterion:
@@ -28,10 +23,7 @@ class ClassifyNetworkWrapper(nn.Module):
         else:
             self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, batch: Dict):
-        input = batch["img"].to(self.device)
-        target = Variable(batch["target"]).long().to(self.device)
-
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
         # 出力は，
         # [[0番目のクラス，0番目のクラス，...batchの大きさ分繰り返し],
         #  [1番目のクラス，1番目のクラス， ...batchの大きさ分繰り返し]]
@@ -45,7 +37,12 @@ class ClassifyNetworkWrapper(nn.Module):
 
         axis = 1
         _, preds = torch.max(output, axis)
-        acc = torch.sum(preds == target) / len(batch["cls_names"])
+        acc = torch.sum(preds == target) / len(input.size()[0])
 
-        scalar_stats.update({"batch_loss": loss, "batch_acc": acc})
+        scalar_stats.update(
+            {"batch_loss": loss.detach().clone(), "batch_acc": acc.detach().clone()}
+        )
+
+        del input, target, acc  # loss と iou 計算後 batch を削除してメモリを確保
+
         return output, loss, scalar_stats

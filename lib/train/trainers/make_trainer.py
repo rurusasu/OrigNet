@@ -1,4 +1,5 @@
 import sys
+from typing import Literal
 
 sys.path.append(".")
 sys.path.append("../../../")
@@ -16,7 +17,9 @@ _wrapper_factory = {
 }
 
 
-def make_trainer(cfg: CfgNode, network, device: str = "cpu"):
+def make_trainer(
+    cfg: CfgNode, network, device_name: Literal["cpu", "cuda", "auto"] = "auto"
+):
     """
     Trainer クラスを呼び出す関数
     device 引数について不明な場合は以下を参照．
@@ -28,8 +31,8 @@ def make_trainer(cfg: CfgNode, network, device: str = "cpu"):
         device(str): 'cpu' もしくは 'cuda: n' ここで n はGPU 番号．Default to 'cpu'.
     """
     wrapper = _wrapper_factory[cfg.task]
-    network = wrapper(cfg, network, device)
-    return Trainer(network, device_name="auto")
+    network = wrapper(cfg, network)
+    return Trainer(network, device_name=device_name)
 
 
 if __name__ == "__main__":

@@ -82,13 +82,14 @@ class Trainer(object):
                         input = batch["img"].to(
                             device=self.device, dtype=torch.float16, non_blocking=True
                         )
-                        target = Variable(batch["target"]).to(
+                        target = batch["target"].to(
                             device=self.device, dtype=torch.float16, non_blocking=True
                         )
+
                     # 混合精度を使用しない場合
                     else:
                         input = batch["img"].to(device=self.device, non_blocking=True)
-                        target = Variable(batch["target"]).to(
+                        target = batch["target"].to(
                             device=self.device, non_blocking=True
                         )
 
@@ -114,7 +115,7 @@ class Trainer(object):
                 self.scaler.update()
 
                 # data recording stage
-                loss_stats = self.reduce_loss_stats(loss_stats)
+                # loss_stats = self.reduce_loss_stats(loss_stats)
                 recorder.update_loss_stats(loss_stats)
                 del loss_stats
 
@@ -156,16 +157,18 @@ class Trainer(object):
                     if self.use_amp:
                         # non_blocking については以下を参照
                         # REF: https://qiita.com/sugulu_Ogawa_ISID/items/62f5f7adee083d96a587
+                        # 【PyTorch】地味に知っておくべき実装の躓きドコロ
+                        # REF: https://www.hellocybernetics.tech/entry/2018/02/20/182906
                         input = batch["img"].to(
                             device=self.device, dtype=torch.float16, non_blocking=True
                         )
-                        target = Variable(batch["target"]).to(
+                        target = batch["target"].to(
                             device=self.device, dtype=torch.float16, non_blocking=True
                         )
                     # 混合精度を使用しない場合
                     else:
                         input = batch["img"].to(device=self.device, non_blocking=True)
-                        target = Variable(batch["target"]).to(
+                        target = batch["target"].to(
                             device=self.device, non_blocking=True
                         )
 
@@ -194,3 +197,4 @@ class Trainer(object):
 
         if recorder:
             recorder.record("val", epoch, val_loss_stats)
+        del val_loss_stats

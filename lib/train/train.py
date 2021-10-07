@@ -41,8 +41,7 @@ def train(cfg: CfgNode) -> None:
     cfg.num_classes = len(train_loader.dataset.cls_names)
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
-
-    trainer = make_trainer(cfg, network, device=device)
+    trainer = make_trainer(cfg, network, device_name="auto")
     optimizer = make_optimizer(cfg, network)
     scheduler = make_lr_scheduler(cfg, optimizer)
     recorder = make_recorder(cfg)
@@ -88,7 +87,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = False
+    debug = True
 
     if debug:
         from yacs.config import CfgNode as CN
@@ -175,10 +174,19 @@ if __name__ == "__main__":
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
 
-    torch.cuda.empty_cache()
-    try:
-        main(cfg)
-    except:
-        traceback.print_exc()
-    finally:
         torch.cuda.empty_cache()
+        try:
+            main(conf)
+        except:
+            traceback.print_exc()
+        finally:
+            torch.cuda.empty_cache()
+
+    else:
+        torch.cuda.empty_cache()
+        try:
+            main(cfg)
+        except:
+            traceback.print_exc()
+        finally:
+            torch.cuda.empty_cache()
