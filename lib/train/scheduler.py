@@ -71,6 +71,7 @@ def make_lr_scheduler(cfg: CfgNode, optimizer):
         "train" not in cfg
         and "scheduler" not in cfg.train
         and "milestones" not in cfg.train
+        and "warp_iter" not in cfg.train
         and "gamma" not in cfg.train
     ):
         raise ("The required parameter for `make_lr_scheduler` is not set.")
@@ -80,7 +81,7 @@ def make_lr_scheduler(cfg: CfgNode, optimizer):
             milestones=cfg.train.milestones,
             gamma=cfg.train.gamma,
             warmup_factor=1.0 / 3,
-            warmup_iters=5,
+            warmup_iters=cfg.train.warp_iter,
             warmup_method="linear",
         )
     elif cfg.train.scheduler == "multi_step_lr":
@@ -88,7 +89,9 @@ def make_lr_scheduler(cfg: CfgNode, optimizer):
             optimizer, milestones=cfg.train.milestones, gamma=cfg.train.gamma
         )
     elif cfg.train.scheduler == "step_lr":
-        scheduler = StepLR(optimizer, gamma=cfg.train.gamma, step_size=5)
+        scheduler = StepLR(
+            optimizer, gamma=cfg.train.gamma, step_size=cfg.train.warp_iter
+        )
     else:
         raise ("The required parameter for `LR Scheduler` is not set.")
     return scheduler

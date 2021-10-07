@@ -28,20 +28,28 @@ def SelectDevice(max_gpu_num: int = 0):
     REF: https://note.nkmk.me/python-pytorch-cuda-is-available-device-count/
     Arg:
         max_gpu_num(int): 使用する GPU の最大個数．0 <= n <= max_gpu_count で指定する．Default to 0.
+
+    Returns:
+        device_name(str): 使用可能なデバイス名 ("cpu" or "cuda")．
+        num_devices(List[int]): 使用可能なデバイスの番号．
+        `device_name="cpu"` : `num_devices=[]`．
+        GPUが1つしか搭載されていない場合，`device_name="cuda"` : `num_devices=[0]`．
+        GPUが複数搭載されている場合，`device_name="cuda"` : `num_devices=[0, 1, ...]`.
+
     """
     if torch.cuda.is_available():  # GPU が使用可能な場合
         num_devices = torch.cuda.device_count()
         if num_devices == 1:  # GPU が1つしか搭載されていない場合
-            return [0]
+            return "cuda", [0]
         else:  # GPU が 2 つ以上搭載されている場合
             gpu_num = []
             for i in range(num_devices):
                 gpu_num.append(i)
                 if num_devices < max_gpu_num:
                     break
-            return gpu_num
+            return "cuda", gpu_num
     else:  # GPU が使用不可
-        return "cpu"
+        return "cpu", []
 
 
 def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
