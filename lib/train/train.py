@@ -128,10 +128,17 @@ if __name__ == "__main__":
     """
 
     cfg = CN()
-    # cfg.task = "classify"
-    # cfg.network = "cnns"
-    # cfg.model = "res_18"
-    cfg.cls_names = ["laptop", "tv"]
+    cfg.cls_names = [
+        "'person'",
+        "bottle",
+        "chair",
+        "cup",
+        "tv",
+        "laptop",
+        "mouse",
+        "cell phone",
+        "book",
+    ]
     cfg.task = "semantic_segm"
     cfg.network = "smp"
     cfg.model = "unetpp"
@@ -152,8 +159,8 @@ if __name__ == "__main__":
     # cfg.train.dataset = "Sample_2Train"
     # cfg.train.dataset = "BrakeRotorsTrain"
     # cfg.train.dataset = "LinemodTrain"
-    cfg.train.dataset = "COCO2017Val"
-    cfg.train.batch_size = 20
+    cfg.train.dataset = "COCO2017Train"
+    cfg.train.batch_size = 5
     cfg.train.num_workers = 2
     cfg.train.batch_sampler = ""
     cfg.train.optim = "adam"
