@@ -9,7 +9,7 @@ import torch
 
 from yacs.config import CfgNode
 
-from lib.config.config import pth
+from lib.config.config import pth, cfg
 from lib.datasets.make_datasets import make_data_loader
 from lib.models.make_network import make_network
 from lib.train.scheduler import make_lr_scheduler
@@ -87,92 +87,93 @@ def main(cfg):
 if __name__ == "__main__":
     # テスト
     import traceback
-    from yacs.config import CfgNode as CN
 
-    """
-    cfg = CN()
-    cfg.task = "classify"
-    cfg.network = "cnns"
-    cfg.model = "res_18"
-    cfg.cls_names = ["laptop", "tv"]
-    cfg.encoder_name = "resnet18"
-    cfg.model_dir = "model"
-    cfg.train_type = "transfer"  # or scratch
-    # cfg.train_type = "scratch"
-    cfg.img_width = 224
-    cfg.img_height = 224
-    cfg.resume = True  # 追加学習するか
-    cfg.record_dir = "record"
-    cfg.ep_iter = -1
-    cfg.save_ep = 5
-    cfg.eval_ep = 1
-    cfg.train = CN()
-    cfg.train.epoch = 15
-    cfg.train.dataset = "SampleTrain"
-    cfg.train.batch_size = 4
-    cfg.train.num_workers = 2
-    cfg.train.batch_sampler = ""
-    cfg.train.optim = "adam"
-    cfg.train.criterion = ""
-    cfg.train.lr = 1e-3
-    cfg.train.scheduler = "step_lr"
-    cfg.train.weight_decay = 0.0
-    cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
-    cfg.train.gamma = 0.5
-    cfg.train.metrics = "iou"
-    cfg.test = CN()
-    cfg.test.dataset = "SampleTest"
-    cfg.test.batch_size = 20
-    cfg.test.num_workers = 2
-    cfg.test.batch_sampler = ""
-    """
+    debug = False
 
-    cfg = CN()
-    # cfg.task = "classify"
-    # cfg.network = "cnns"
-    # cfg.model = "res_18"
-    cfg.cls_names = ["laptop", "tv"]
-    cfg.task = "semantic_segm"
-    cfg.network = "smp"
-    cfg.model = "unetpp"
-    cfg.encoder_name = "resnet18"
-    cfg.model_dir = "model"
-    cfg.train_type = "transfer"  # or scratch
-    # cfg.train_type = "scratch"
-    cfg.img_width = 224
-    cfg.img_height = 224
-    cfg.resume = True  # 追加学習するか
-    cfg.record_dir = "record"
-    cfg.ep_iter = -1
-    cfg.save_ep = 5
-    cfg.eval_ep = 1
-    cfg.train = CN()
-    cfg.train.epoch = 1000
-    # cfg.train.dataset = "SampleTrain"
-    # cfg.train.dataset = "Sample_2Train"
-    # cfg.train.dataset = "BrakeRotorsTrain"
-    # cfg.train.dataset = "LinemodTrain"
-    cfg.train.dataset = "COCO2017Val"
-    cfg.train.batch_size = 30
-    cfg.train.num_workers = 2
-    cfg.train.batch_sampler = ""
-    cfg.train.optim = "adam"
-    cfg.train.criterion = ""
-    cfg.train.lr = 1e-3
-    cfg.train.scheduler = "step_lr"
-    cfg.train.weight_decay = 0.0
-    cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
-    cfg.train.warp_iter = 50
-    cfg.train.gamma = 0.5
-    cfg.train.metrics = "iou"
-    cfg.test = CN()
-    # cfg.test.dataset = "SampleTest"
-    # cfg.test.dataset = "Sample_2Test"
-    # cfg.test.dataset = "LinemodTest"
-    cfg.test.dataset = "COCO2017Val"
-    cfg.test.batch_size = 20
-    cfg.test.num_workers = 2
-    cfg.test.batch_sampler = ""
+    if debug:
+        from yacs.config import CfgNode as CN
+
+        """
+        cfg = CN()
+        cfg.task = "classify"
+        cfg.network = "cnns"
+        cfg.model = "res_18"
+        cfg.cls_names = ["laptop", "tv"]
+        cfg.encoder_name = "resnet18"
+        cfg.model_dir = "model"
+        cfg.train_type = "transfer"  # or scratch
+        # cfg.train_type = "scratch"
+        cfg.img_width = 224
+        cfg.img_height = 224
+        cfg.resume = True  # 追加学習するか
+        cfg.record_dir = "record"
+        cfg.ep_iter = -1
+        cfg.save_ep = 5
+        cfg.eval_ep = 1
+        cfg.train = CN()
+        cfg.train.epoch = 15
+        cfg.train.dataset = "SampleTrain"
+        cfg.train.batch_size = 4
+        cfg.train.num_workers = 2
+        cfg.train.batch_sampler = ""
+        cfg.train.optim = "adam"
+        cfg.train.criterion = ""
+        cfg.train.lr = 1e-3
+        cfg.train.scheduler = "step_lr"
+        cfg.train.weight_decay = 0.0
+        cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+        cfg.train.gamma = 0.5
+        cfg.train.metrics = "iou"
+        cfg.test = CN()
+        cfg.test.dataset = "SampleTest"
+        cfg.test.batch_size = 20
+        cfg.test.num_workers = 2
+        cfg.test.batch_sampler = ""
+        """
+
+        conf = CN()
+        conf.cls_names = ["laptop", "tv"]
+        conf.task = "semantic_segm"
+        conf.network = "smp"
+        conf.model = "unetpp"
+        conf.encoder_name = "resnet18"
+        conf.model_dir = "model"
+        conf.train_type = "transfer"  # or scratch
+        # cfg.train_type = "scratch"
+        conf.img_width = 224
+        conf.img_height = 224
+        conf.resume = True  # 追加学習するか
+        conf.record_dir = "record"
+        conf.ep_iter = -1
+        conf.save_ep = 5
+        conf.eval_ep = 1
+        conf.train = CN()
+        conf.train.epoch = 1000
+        # cfg.train.dataset = "SampleTrain"
+        # cfg.train.dataset = "Sample_2Train"
+        # cfg.train.dataset = "BrakeRotorsTrain"
+        # cfg.train.dataset = "LinemodTrain"
+        conf.train.dataset = "COCO2017Val"
+        conf.train.batch_size = 30
+        conf.train.num_workers = 2
+        conf.train.batch_sampler = ""
+        conf.train.optim = "adam"
+        conf.train.criterion = ""
+        conf.train.lr = 1e-3
+        conf.train.scheduler = "step_lr"
+        conf.train.weight_decay = 0.0
+        conf.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+        conf.train.warp_iter = 50
+        conf.train.gamma = 0.5
+        conf.train.metrics = "iou"
+        conf.test = CN()
+        # cfg.test.dataset = "SampleTest"
+        # cfg.test.dataset = "Sample_2Test"
+        # cfg.test.dataset = "LinemodTest"
+        conf.test.dataset = "COCO2017Val"
+        conf.test.batch_size = 20
+        conf.test.num_workers = 2
+        conf.test.batch_sampler = ""
 
     torch.cuda.empty_cache()
     try:

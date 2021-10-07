@@ -47,6 +47,8 @@ Default values setting
 # task
 # classify or semantic_segm
 cfg.task = ""
+# class names
+cfg.cls_names = []
 # cnns, smp
 cfg.network = "cnns"
 # 例: alex
@@ -93,7 +95,9 @@ cfg.train.lr = 1e-3
 cfg.train.scheduler = "step_lr"
 cfg.train.weight_decay = 0.0
 cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+cfg.train.warp_iter = 5
 cfg.train.gamma = 0.5
+cfg.train.metrics = "iou"
 
 cfg.test = CN()
 cfg.test.dataset = ""
