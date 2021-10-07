@@ -40,9 +40,9 @@ def train(cfg: CfgNode) -> None:
 
     cfg.num_classes = len(train_loader.dataset.cls_names)
     # 指定した device 上でネットワークを生成
-    network = make_network(cfg).to(device)
+    network = make_network(cfg)
 
-    trainer = make_trainer(cfg, network, device)
+    trainer = make_trainer(cfg, network, device=device)
     optimizer = make_optimizer(cfg, network)
     scheduler = make_lr_scheduler(cfg, optimizer)
     recorder = make_recorder(cfg)
@@ -128,17 +128,10 @@ if __name__ == "__main__":
     """
 
     cfg = CN()
-    cfg.cls_names = [
-        "'person'",
-        "bottle",
-        "chair",
-        "cup",
-        "tv",
-        "laptop",
-        "mouse",
-        "cell phone",
-        "book",
-    ]
+    # cfg.task = "classify"
+    # cfg.network = "cnns"
+    # cfg.model = "res_18"
+    cfg.cls_names = ["laptop", "tv"]
     cfg.task = "semantic_segm"
     cfg.network = "smp"
     cfg.model = "unetpp"
@@ -159,8 +152,8 @@ if __name__ == "__main__":
     # cfg.train.dataset = "Sample_2Train"
     # cfg.train.dataset = "BrakeRotorsTrain"
     # cfg.train.dataset = "LinemodTrain"
-    cfg.train.dataset = "COCO2017Train"
-    cfg.train.batch_size = 5
+    cfg.train.dataset = "COCO2017Val"
+    cfg.train.batch_size = 30
     cfg.train.num_workers = 2
     cfg.train.batch_sampler = ""
     cfg.train.optim = "adam"
@@ -169,6 +162,7 @@ if __name__ == "__main__":
     cfg.train.scheduler = "step_lr"
     cfg.train.weight_decay = 0.0
     cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+    cfg.train.warp_iter = 50
     cfg.train.gamma = 0.5
     cfg.train.metrics = "iou"
     cfg.test = CN()

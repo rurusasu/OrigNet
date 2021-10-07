@@ -29,7 +29,7 @@ def make_trainer(cfg: CfgNode, network, device: str = "cpu"):
     """
     wrapper = _wrapper_factory[cfg.task]
     network = wrapper(cfg, network, device)
-    return Trainer(network, device)
+    return Trainer(network, device_name="auto")
 
 
 if __name__ == "__main__":

@@ -32,11 +32,12 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         self.criterion = smp.utils.losses.DiceLoss()
 
         # 評価指標 (metrics) を選択
-        self.metrics = make_metrics(cfg)
+        # self.metrics = make_metrics(cfg)
+        self.metrics = smp.utils.metrics.IoU()
 
-    def forward(self, batch: int):
-        input = batch["img"].to(self.device)
-        target = Variable(batch["target"]).to(self.device)
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
+        # input = batch["img"].to(self.device)
+        # target = Variable(batch["target"]).to(self.device)
         output = self.net.forward(input)
         # スカラステータス（）
         scalar_stats = {}
@@ -45,7 +46,7 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
 
         loss = self.criterion(output, target)
         iou = self.metrics(output, target)
-        del batch  # loss と iou 計算後 batch を削除してメモリを確保
+        del input, target  # loss と iou 計算後 batch を削除してメモリを確保
 
         scalar_stats.update({"loss": loss, "iou": iou})
         return output, loss, scalar_stats

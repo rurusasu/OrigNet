@@ -1,19 +1,23 @@
 import datetime
 import sys
 import time
+from typing import Literal
 
 sys.path.append("../")
 
 import torch
 import tqdm
-from torch.nn import DataParallel
+from torch.autograd import Variable
 from torch.cuda import amp
+from torch.nn import DataParallel
 
 from lib.utils.base_utils import SelectDevice
 
 
 class Trainer(object):
-    def __init__(self, network, device: str = "cpu", use_amp: bool = True):
+    def __init__(
+        self, network, device_name=Literal["cpu", "cuda", "auto"], use_amp: bool = True
+    ):
         """
         device 引数について不明な場合は以下を参照．
         REF: https://note.nkmk.me/python-pytorch-device-to-cuda-cpu/
@@ -22,19 +26,27 @@ class Trainer(object):
             network: 訓練されるネットワーク
             device(str): 'cpu' もしくは 'cuda: n' ここで n はGPU 番号．Default to 'cpu'.
         """
-
-        num_device = SelectDevice()
+        if device_name == "cpu":
+            self.device_name = device_name
+            self.num_devices = []
+        elif device_name == "cuda":
+            self.device_name = device_name
+            self.num_devices = [0]
+        elif device_name == "auto":
+            self.device_name, self.num_devices = SelectDevice()
         # Dataparallel の使い方は以下のサイトを参照．
         # REF: https://qiita.com/m__k/items/87b3b1da15f35321ecf5
-        if num_device == "cpu":
+        if self.device_name == "cpu":
             network = DataParallel(network)
         else:
-            network = DataParallel(network, device_ids=num_device)
-        self.network = network.to(device)
-        self.use_amp = 1 - use_amp
+            network = DataParallel(network, device_ids=self.num_devices)
+        # else: # 複数の GPU が搭載されている場合．未実装
+        # network = DataParallel(network, device=self.num_device)
+        self.device = torch.device(self.device_name)
+        self.network = network.to(device=self.device)
         # ---- amp setting ---- #
-        self.scaler = amp.GradScaler(enabled=bool(self.use_amp))
-        self.device = torch.device(device)
+        self.use_amp = use_amp
+        self.scaler = amp.GradScaler(enabled=self.use_amp)
 
     def reduce_loss_stats(self, loss_stats: dict) -> dict:
         """
@@ -62,10 +74,26 @@ class Trainer(object):
                 # optimizer の初期化
                 optimizer.zero_grad()
                 # 演算を混合精度でキャスト
-                with amp.autocast(enabled=bool(self.use_amp)):
-                    batch["img"] = batch["img"].to(torch.float32)
-                    batch["target"] = batch["target"].to(torch.float32)
-                    output, loss, loss_stats = self.network(batch)
+                with amp.autocast(enabled=self.use_amp):
+                    # もし，混合精度を使用する場合．
+                    if self.use_amp:
+                        # non_blocking については以下を参照
+                        # REF: https://qiita.com/sugulu_Ogawa_ISID/items/62f5f7adee083d96a587
+                        input = batch["img"].to(
+                            device=self.device, dtype=torch.float16, non_blocking=True
+                        )
+                        target = Variable(batch["target"]).to(
+                            device=self.device, dtype=torch.float16, non_blocking=True
+                        )
+                    # 混合精度を使用しない場合
+                    else:
+                        input = batch["img"].to(device=self.device, non_blocking=True)
+                        target = Variable(batch["target"]).to(
+                            device=self.device, non_blocking=True
+                        )
+
+                    output, loss, loss_stats = self.network(input, target)
+
                     if loss.ndim != 0:
                         # 損失の平均値を計算
                         loss = loss.mean()
@@ -78,33 +106,17 @@ class Trainer(object):
 
                 # 【PyTorch】不要になった計算グラフを削除してメモリを節約
                 # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/
-                del loss  # 誤差逆伝播を実行後、計算グラフを削除
+                del input, output, target, loss, batch  # 誤差逆伝播を実行後、計算グラフを削除
 
                 # グラデーションのスケールを解除し、optimizer.step()を呼び出すかスキップする。
                 self.scaler.step(optimizer)
                 # optimizer.step()
                 self.scaler.update()
 
-                """
-                output, loss, loss_stats = self.network(batch)
-                if loss.ndim != 0:
-                    # 損失の平均値を計算
-                    loss = loss.mean()
-                else:
-                    # バッチサイズをもとに平均値を計算
-                    loss = loss / len(batch["cls_names"])
-                # optimizer の初期化
-                optimizer.zero_grad()
-                # 逆伝搬計算
-                loss.backward()
-                torch.nn.utils.clip_grad_value_(self.network.parameters(), 40)
-                # パラメタ更新
-                optimizer.step()
-                """
-
                 # data recording stage
                 loss_stats = self.reduce_loss_stats(loss_stats)
                 recorder.update_loss_stats(loss_stats)
+                del loss_stats
 
                 batch_time = time.time() - end
                 end = time.time()
@@ -139,16 +151,31 @@ class Trainer(object):
         val_loss_stats = {}
         data_size = len(data_loader)
         for batch in tqdm.tqdm(data_loader):
-            # batch["img"] = batch["img"].cuda()
-            # if batch["msk"]:
-            #     batch["msk"] = batch["msk"].cuda()
             with torch.no_grad():
-                with amp.autocast(enabled=bool(self.use_amp)):
-                    batch["img"] = batch["img"].to(torch.float32)
-                    batch["target"] = batch["target"].to(torch.float32)
-                    output, loss, loss_stats = self.network(batch)
+                with amp.autocast(enabled=self.use_amp):
+                    if self.use_amp:
+                        # non_blocking については以下を参照
+                        # REF: https://qiita.com/sugulu_Ogawa_ISID/items/62f5f7adee083d96a587
+                        input = batch["img"].to(
+                            device=self.device, dtype=torch.float16, non_blocking=True
+                        )
+                        target = Variable(batch["target"]).to(
+                            device=self.device, dtype=torch.float16, non_blocking=True
+                        )
+                    # 混合精度を使用しない場合
+                    else:
+                        input = batch["img"].to(device=self.device, non_blocking=True)
+                        target = Variable(batch["target"]).to(
+                            device=self.device, non_blocking=True
+                        )
+
+                    output, _, loss_stats = self.network(input, target)
                 if evaluator is not None:
-                    result = evaluator.evaluate(output=output, batch=batch)
+                    result = evaluator.evaluate(
+                        input=input, output=output, target=target
+                    )
+
+            del input, output, target, batch
 
             loss_stats = self.reduce_loss_stats(loss_stats)
             for k, v in loss_stats.items():

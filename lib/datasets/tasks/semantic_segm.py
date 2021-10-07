@@ -98,6 +98,8 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
 
     # Add extra dimension for parity with train_img size [X * X * 3]
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+
+    # すべての
     return mask, class_names
 
 
@@ -251,4 +253,4 @@ if __name__ == "__main__":
 
     dloader = make_data_loader(cfg, is_train=True)
     for iter, batch in enumerate(dloader):
-        img, mask = batch["img"], batch["mask"]
+        img, mask = batch["img"], batch["target"]
