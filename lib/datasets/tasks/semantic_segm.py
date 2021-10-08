@@ -47,7 +47,7 @@ def FilterDataset(
     coco = COCO(annFile)
 
     images = []
-    if cls_names != None:
+    if cls_names is not None:
         # リスト内の個々のクラスに対してイテレートする
         for className in cls_names:
             # 与えられたカテゴリを含むすべての画像を取得する
@@ -59,11 +59,13 @@ def FilterDataset(
         imgIds = coco.getImgIds()
         images = coco.loadImgs(imgIds)
 
+    # del catIds, imgIds
     # Now, filter out the repeated images
     unique_images = []
     for i in range(len(images)):
         if images[i] not in unique_images:
             unique_images.append(images[i])
+    # del images
 
     random.shuffle(unique_images)
     dataset_size = len(unique_images)
@@ -86,6 +88,7 @@ def getImage(imgObj, img_folder: str, input_img_size: tuple) -> np.ndarray:
 def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)
+    # del annIds
     cats = coco.loadCats(catIds)
     mask = np.zeros(input_img_size)
     class_names = []
@@ -96,6 +99,7 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
         mask = np.maximum(new_mask, mask)
         class_names.append(className)
 
+    # del anns, cats, className, new_mask, pixel_value
     # Add extra dimension for parity with train_img size [X * X * 3]
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
 
@@ -106,6 +110,7 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
 def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)  # アノテーションを読みだす
+    # del annIds
     # train_mask = np.zeros(input_img_size)
     mask = np.zeros(input_img_size)
     for id in range(len(anns)):
@@ -118,6 +123,7 @@ def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
         # 画素の位置ごとの最大値を返す
         mask = np.maximum(new_mask, mask)
 
+    # del anns, new_mask
     # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
     return mask
@@ -173,6 +179,7 @@ class SegmentationDataset(Dataset):
             raise TypeError("Invalid type for variable index")
 
         img_info = self.imgs_info[img_id]
+        del img_id
 
         input_img_size = (width, height)
         ### Retrieve Image ###
@@ -189,6 +196,8 @@ class SegmentationDataset(Dataset):
             mask, class_names = getNormalMask(
                 img_info, self.cls_names, self.coco, self.catIds, input_img_size
             )
+
+        del img_info, input_img_size
 
         if self.transforms:
             img = self.transforms(img)

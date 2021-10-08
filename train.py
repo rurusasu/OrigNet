@@ -6,7 +6,6 @@ sys.path.append("../../")
 sys.path.append("../../../")
 
 import torch
-
 from yacs.config import CfgNode
 
 from lib.config.config import pth, cfg
@@ -50,24 +49,40 @@ def train(cfg: CfgNode) -> None:
         network, optimizer, scheduler, recorder, cfg.model_dir, resume=cfg.resume
     )
 
-    for epoch in range(begin_epoch, cfg.train.epoch):
-        recorder.epoch = epoch
-        trainer.train(epoch, train_loader, optimizer, recorder)
-        scheduler.step()
+    if not os.path.exists(cfg.profile_dir):
+        os.makedirs(cfg.profile_dir)
 
-        # 訓練途中のモデルを保存する
-        if (epoch + 1) % cfg.save_ep == 0:
-            save_model(
-                network, optimizer, scheduler, recorder, epoch + 1, cfg.model_dir
-            )
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=10),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler("./log/resnet18"),
+        record_shapes=True,
+        with_stack=True,
+    ) as prof:
+        for epoch in range(begin_epoch, cfg.train.epoch):
+            recorder.epoch = epoch
+            trainer.train(epoch, train_loader, optimizer, recorder)
+            scheduler.step()
 
-        # 検証
-        if (epoch + 1) % cfg.eval_ep == 0:
-            trainer.val(epoch, val_loader, recorder=recorder)
+            # 訓練途中のモデルを保存する
+            if (epoch + 1) % cfg.save_ep == 0:
+                save_model(
+                    network, optimizer, scheduler, recorder, epoch + 1, cfg.model_dir
+                )
+
+            # 検証
+            if (epoch + 1) % cfg.eval_ep == 0:
+                trainer.val(epoch, val_loader, recorder=recorder)
+
+            prof.step()
 
     # 訓練終了後のモデルを保存
     save_model(network, optimizer, scheduler, recorder, epoch, cfg.model_dir)
     # trainer.val(epoch, val_loader, evaluator, recorder)
+    # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
     return network
 
 
@@ -79,6 +94,9 @@ def main(cfg):
     cfg.record_dir = os.path.join(
         pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
     )
+    cfg.profile_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.profile_dir
+    )
     # 訓練
     train(cfg)
 
@@ -87,7 +105,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = False
+    debug = True
 
     if debug:
         from yacs.config import CfgNode as CN
@@ -137,17 +155,18 @@ if __name__ == "__main__":
         conf.model = "unetpp"
         conf.encoder_name = "resnet18"
         conf.model_dir = "model"
+        conf.record_dir = "record"
+        conf.profile_dir = "profile"
         conf.train_type = "transfer"  # or scratch
         # cfg.train_type = "scratch"
         conf.img_width = 224
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
-        conf.record_dir = "record"
         conf.ep_iter = -1
         conf.save_ep = 5
         conf.eval_ep = 1
         conf.train = CN()
-        conf.train.epoch = 1000
+        conf.train.epoch = 10
         # cfg.train.dataset = "SampleTrain"
         # cfg.train.dataset = "Sample_2Train"
         # cfg.train.dataset = "BrakeRotorsTrain"
