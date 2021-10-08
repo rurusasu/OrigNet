@@ -1,24 +1,24 @@
 import os
 import sys
 
+from torch import profiler
+
 sys.path.append(".")
 sys.path.append("../../")
 sys.path.append("../../../")
 
+import segmentation_models_pytorch as smp
 import torch
+import tqdm
+from torch.cuda import amp
 from yacs.config import CfgNode
 
 from lib.config.config import pth, cfg
 from lib.datasets.make_datasets import make_data_loader
 from lib.models.make_network import make_network
-from lib.train.scheduler import make_lr_scheduler
-from lib.train.optimizers import make_optimizer
-from lib.train.trainers.make_trainer import make_trainer
-from lib.train.recorder import make_recorder
-from lib.utils.net_utils import load_model, save_model
 
 
-def train(cfg: CfgNode) -> None:
+def train_prof(cfg: CfgNode) -> None:
     """
     訓練と検証を行い，任意のエポック数ごとに訓練されたネットワークを保存する関数．
 
@@ -35,53 +35,75 @@ def train(cfg: CfgNode) -> None:
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
-    val_loader = make_data_loader(cfg, is_train=False)
 
     cfg.num_classes = len(train_loader.dataset.cls_names)
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
-    trainer = make_trainer(cfg, network, device_name="auto")
-    optimizer = make_optimizer(cfg, network)
-    scheduler = make_lr_scheduler(cfg, optimizer)
-    recorder = make_recorder(cfg)
-
-    begin_epoch = load_model(
-        network, optimizer, scheduler, recorder, cfg.model_dir, resume=cfg.resume
+    criterion = smp.utils.losses.DiceLoss()
+    metrics = smp.utils.metrics.IoU()
+    optimizer = torch.optim.Adam(
+        network.parameters(), cfg.train.lr, weight_decay=cfg.train.weight_decay
     )
+    use_amp = True
+    scaler = amp.GradScaler(enabled=use_amp)
 
-    for epoch in range(begin_epoch, cfg.train.epoch):
-        recorder.epoch = epoch
-        trainer.train(epoch, train_loader, optimizer, recorder)
-        scheduler.step()
+    network = network.to(device)
+    network.train()
 
-        # 訓練途中のモデルを保存する
-        if (epoch + 1) % cfg.save_ep == 0:
-            save_model(
-                network, optimizer, scheduler, recorder, epoch + 1, cfg.model_dir
-            )
+    if not os.path.exists(cfg.profile_dir):
+        os.makedirs(cfg.profile_dir)
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        # schedule=torch.profiler.schedule(wait=1, warmup=14, active=3, repeat=2),
+        # on_trace_ready=torch.profiler.tensorboard_trace_handler("./log"),
+        # record_shapes=True,
+        # profile_memory=True,
+        # with_stack=True,
+    ) as prof:
 
-        # 検証
-        if (epoch + 1) % cfg.eval_ep == 0:
-            trainer.val(epoch, val_loader, recorder=recorder)
+        with tqdm.tqdm(total=len(train_loader), leave=False, desc="train") as pbar:
+            for iteration, batch in enumerate(train_loader):
+                # 混合精度テスト
+                # optimizer の初期化
+                optimizer.zero_grad()
+                # 演算を混合精度でキャスト
+                with amp.autocast(enabled=use_amp):
+                    # もし，混合精度を使用する場合．
+                    if use_amp:
+                        input = batch["img"].to(
+                            device=device, dtype=torch.float16, non_blocking=True
+                        )
+                        target = batch["target"].to(
+                            device=device, dtype=torch.float16, non_blocking=True
+                        )
+                    # 混合精度を使用しない場合
+                    else:
+                        input = batch["img"].to(device=device, non_blocking=True)
+                        target = batch["target"].to(device=device, non_blocking=True)
 
-    # 訓練終了後のモデルを保存
-    save_model(network, optimizer, scheduler, recorder, epoch, cfg.model_dir)
-    # trainer.val(epoch, val_loader, evaluator, recorder)
-    # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-    return network
+                    output = network(input)
+
+                    loss = criterion(output, target)
+                    iou = metrics(output, target)
+
+                # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                pbar.update()
+                prof.step()
+        print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
 
 
-def main(cfg):
-    # データの保存先を設定
-    cfg.model_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
+def main_prof(cfg):
+    cfg.profile_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.profile_dir
     )
-    cfg.record_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
-    )
-
     # 訓練
-    train(cfg)
+    train_prof(cfg)
 
 
 if __name__ == "__main__":
@@ -139,6 +161,7 @@ if __name__ == "__main__":
         conf.encoder_name = "resnet18"
         conf.model_dir = "model"
         conf.record_dir = "record"
+        conf.profile_dir = "profile"
         conf.train_type = "transfer"  # or scratch
         # cfg.train_type = "scratch"
         conf.img_width = 224
@@ -177,7 +200,7 @@ if __name__ == "__main__":
 
         torch.cuda.empty_cache()
         try:
-            main(conf)
+            main_prof(conf)
         except:
             traceback.print_exc()
         finally:

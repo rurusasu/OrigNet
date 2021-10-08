@@ -85,7 +85,6 @@ class Trainer(object):
                         target = batch["target"].to(
                             device=self.device, dtype=torch.float16, non_blocking=True
                         )
-
                     # 混合精度を使用しない場合
                     else:
                         input = batch["img"].to(device=self.device, non_blocking=True)
