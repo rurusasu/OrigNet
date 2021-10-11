@@ -2,6 +2,7 @@ albumentations
 black
 easydict
 flake8
+ipykernel
 matplotlib
 numpy
 opencv-python
@@ -14,8 +15,6 @@ seaborn
 segmentation-models-pytorch
 tensorboardX
 timm
-torch
-torchvision
 tqdm
 urllib3
 yacs

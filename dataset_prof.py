@@ -18,7 +18,7 @@ from lib.datasets.make_datasets import make_data_loader
 from lib.models.make_network import make_network
 
 
-def train_prof(cfg: CfgNode) -> None:
+def dataset_prof(cfg: CfgNode) -> None:
     """
     訓練と検証を行い，任意のエポック数ごとに訓練されたネットワークを保存する関数．
 
@@ -31,75 +31,27 @@ def train_prof(cfg: CfgNode) -> None:
     # cuda が存在する場合，cudaを使用する
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.benchmark = True
     torch.multiprocessing.set_sharing_strategy("file_system")
-    # 訓練と検証用のデータローダーを作成
-    train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
 
-    cfg.num_classes = len(train_loader.dataset.cls_names)
-    # 指定した device 上でネットワークを生成
-    network = make_network(cfg)
-    criterion = smp.utils.losses.DiceLoss()
-    metrics = smp.utils.metrics.IoU()
-    optimizer = torch.optim.Adam(
-        network.parameters(), cfg.train.lr, weight_decay=cfg.train.weight_decay
-    )
-    use_amp = True
-    scaler = amp.GradScaler(enabled=use_amp)
-
-    # network = network.to(device)
-    network = network.cuda(device)
-    network.train()
-
-    if not os.path.exists(cfg.profile_dir):
-        os.makedirs(cfg.profile_dir)
     with profiler.profile(
         activities=[
             profiler.ProfilerActivity.CPU,
             profiler.ProfilerActivity.CUDA,
         ],
-        schedule=profiler.schedule(wait=1, warmup=10, active=6),
+        schedule=profiler.schedule(wait=1, warmup=3, active=13),
         on_trace_ready=profiler.tensorboard_trace_handler(cfg.profile_dir),
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
     ) as prof:
-
-        with tqdm.tqdm(total=len(train_loader), leave=False, desc="train") as pbar:
-            for iteration, batch in enumerate(train_loader):
-                # 混合精度テスト
-                # optimizer の初期化
-                optimizer.zero_grad()
-                # 演算を混合精度でキャスト
-                with amp.autocast(enabled=use_amp):
-                    if use_amp:  # もし，混合精度を使用する場合．
-                        # input = batch["img"].to(
-                        #     device=device, dtype=torch.float16, non_blocking=True
-                        # )
-                        input = batch["img"].half().cuda(device)
-                        # target = batch["target"].to(
-                        #     device=device, dtype=torch.float16, non_blocking=True
-                        # )
-                        target = batch["target"].half().cuda(device)
-                    # 混合精度を使用しない場合
-                    else:
-                        input = batch["img"].to(device=device, non_blocking=True)
-                        target = batch["target"].to(device=device, non_blocking=True)
-
-                    output = network(input)
-
-                    loss = criterion(output, target)
-                    iou = metrics(output, target)
-
-                # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
-                scaler.scale(loss).backward()
-                del input, output, target, loss, iou, batch  # 誤差逆伝播を実行後、計算グラフを削除
-                torch.cuda.empty_cache()
-
-                scaler.step(optimizer)
-                scaler.update()
-                pbar.update()
-                prof.step()
+        with profiler.record_function("dataset"):
+            # 訓練と検証用のデータローダーを作成
+            train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
+            with tqdm.tqdm(total=len(train_loader), leave=False, desc="train") as pbar:
+                for iteration, batch in enumerate(train_loader):
+                    pbar.update()
+                    prof.step()
     print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=10))
 
 
@@ -108,7 +60,7 @@ def main_prof(cfg):
         pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.profile_dir
     )
     # 訓練
-    train_prof(cfg)
+    dataset_prof(cfg)
 
 
 if __name__ == "__main__":

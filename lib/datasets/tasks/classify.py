@@ -12,7 +12,7 @@ import torch.utils.data as data
 from torchvision import transforms
 from yacs.config import CfgNode
 
-from datasets.augmentation import augmentation
+from lib.datasets.augmentation import augmentation
 from lib.config.config import pth
 from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
 
