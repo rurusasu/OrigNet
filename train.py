@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = True
+    debug = False
 
     if debug:
         from yacs.config import CfgNode as CN

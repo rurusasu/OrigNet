@@ -1,4 +1,3 @@
-import gc
 import os
 import sys
 import random
@@ -59,16 +58,16 @@ def FilterDataset(
         imgIds = coco.getImgIds()
         images = coco.loadImgs(imgIds)
 
-    del annFile, catIds, imgIds
-    gc.collect()
+    # del annFile, catIds, imgIds
+    # gc.collect()
 
     # Now, filter out the repeated images
     unique_images = []
     for i in range(len(images)):
         if images[i] not in unique_images:
             unique_images.append(images[i])
-    del images
-    gc.collect()
+    # del images
+    # gc.collect()
 
     random.shuffle(unique_images)
     dataset_size = len(unique_images)
@@ -91,8 +90,8 @@ def getImage(imgObj, img_folder: str, input_img_size: tuple) -> np.ndarray:
 def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)
-    del annIds
-    gc.collect()
+    # del annIds
+    # gc.collect()
 
     cats = coco.loadCats(catIds)
     mask = np.zeros(input_img_size)
@@ -104,8 +103,8 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
         mask = np.maximum(new_mask, mask)
         class_names.append(className)
 
-    del anns, cats, className, new_mask, pixel_value
-    gc.collect()
+    # del anns, cats
+    # gc.collect()
     # Add extra dimension for parity with train_img size [X * X * 3]
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
 
@@ -116,8 +115,8 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
 def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)  # アノテーションを読みだす
-    del annIds
-    gc.collect()
+    # del annIds
+    # gc.collect()
 
     # train_mask = np.zeros(input_img_size)
     mask = np.zeros(input_img_size)
@@ -131,8 +130,8 @@ def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
         # 画素の位置ごとの最大値を返す
         mask = np.maximum(new_mask, mask)
 
-    del anns, new_mask
-    gc.collect()
+    # del anns, new_mask
+    # gc.collect()
     # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
     return mask
@@ -204,8 +203,8 @@ class SegmentationDataset(data.Dataset):
                 img_info, self.cls_names, self.coco, self.catIds, input_img_size
             )
 
-        del img_info, input_img_size
-        gc.collect()
+        # del img_info, input_img_size
+        # gc.collect()
 
         if self.transforms:
             img = self.transforms(img)

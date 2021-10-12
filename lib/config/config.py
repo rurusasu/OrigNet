@@ -76,6 +76,8 @@ cfg.save_ep = 5
 cfg.eval_ep = 1
 # gpus
 cfg.gpus = [0, 1, 2, 3]
+# use amp
+cfg.use_amp = True
 
 # ---------------------
 # train

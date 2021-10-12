@@ -8,7 +8,6 @@ sys.path.append("../")
 
 import torch
 import tqdm
-from torch.autograd import Variable
 from torch.cuda import amp
 from torch.nn import DataParallel
 
@@ -57,13 +56,16 @@ class Trainer(object):
         return reduced_losses
 
     def train(self, epoch: int, data_loader, optimizer, recorder):
-        torch.cuda.empty_cache()
         self.network.train()
         max_iter = len(data_loader)
         end = time.time()
 
         with tqdm.tqdm(total=len(data_loader), leave=False, desc="train") as pbar:
             for iteration, batch in enumerate(data_loader):
+                # 不要なキャッシュの削除
+                gc.collect()
+                torch.cuda.empty_cache()
+
                 data_time = time.time() - end
                 iteration += 1
                 recorder.step += 1
@@ -71,9 +73,9 @@ class Trainer(object):
                 # --------------- #
                 # training stage #
                 # --------------- #
-                # 混合精度テスト
                 # optimizer の初期化
                 optimizer.zero_grad()
+                # use_amp = True の場合，混合精度を用いて訓練する．
                 # 演算を混合精度でキャスト
                 with amp.autocast(enabled=self.use_amp):
                     # もし，混合精度を使用する場合．
@@ -101,45 +103,50 @@ class Trainer(object):
 
                 # 【PyTorch】不要になった計算グラフを削除してメモリを節約
                 # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/
-                del input, output, target, loss  # 誤差逆伝播を実行後、計算グラフを削除
-                torch.cuda.empty_cache()
-                del batch
-                gc.collect()
+                # del input, output, target, loss  # 誤差逆伝播を実行後、計算グラフを削除
+                # torch.cuda.empty_cache()
+                # del batch
+                # gc.collect()
 
                 # グラデーションのスケールを解除し、optimizer.step()を呼び出すかスキップする。
                 self.scaler.step(optimizer)
                 self.scaler.update()
 
-                recorder.update_loss_stats(loss_stats)
-                del loss_stats
-                torch.cuda.empty_cache()
+                # recorder.update_loss_stats(loss_stats)
+                # del loss_stats
+                # torch.cuda.empty_cache()
 
                 batch_time = time.time() - end
                 end = time.time()
-                recorder.batch_time.update(batch_time)
-                recorder.data_time.update(data_time)
+                # recorder.batch_time.update(batch_time)
+                # recorder.data_time.update(data_time)
                 pbar.update()
 
                 if iteration % 10 == 0 or iteration == (max_iter - 1):
                     # print training state
-                    eta_seconds = recorder.batch_time.global_avg * (
-                        max_iter - iteration
-                    )
-                    eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-                    lr = optimizer.param_groups[0]["lr"]
-                    memory = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
+                    # eta_seconds = recorder.batch_time.global_avg * (
+                    #    max_iter - iteration
+                    # )
+                    # eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+                    # lr = optimizer.param_groups[0]["lr"]
+                    # memory = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
 
-                    training_state = "  ".join(
-                        ["eta: {}", "{}", "lr: {:.6f}", "max_mem: {:.0f}"]
-                    )
+                    # training_state = "  ".join(
+                    #    ["eta: {}", "{}", "lr: {:.6f}", "max_mem: {:.0f}"]
+                    # )
+                    """
                     training_state = training_state.format(
-                        eta_string, str(recorder), lr, memory
+                        eta_string,
+                        str(recorder),
+                        lr,
+                        memory,
                     )
-                    print(training_state)
+                    """
+                    print(f"{loss_stats}")
 
                     # recod loss_stats and img_dict
                     # recorder.update_image_stats(image_stats)
-                    recorder.record("train")
+                    # recorder.record("train")
 
     def val(self, epoch, data_loader, evaluator=None, recorder=None):
         torch.cuda.empty_cache()
@@ -154,18 +161,12 @@ class Trainer(object):
                         # REF: https://qiita.com/sugulu_Ogawa_ISID/items/62f5f7adee083d96a587
                         # 【PyTorch】地味に知っておくべき実装の躓きドコロ
                         # REF: https://www.hellocybernetics.tech/entry/2018/02/20/182906
-                        input = batch["img"].to(
-                            device=self.device, dtype=torch.float16, non_blocking=True
-                        )
-                        target = batch["target"].to(
-                            device=self.device, dtype=torch.float16, non_blocking=True
-                        )
+                        input = batch["img"].half().cuda(self.device)
+                        target = batch["target"].half().cuda(self.device)
                     # 混合精度を使用しない場合
                     else:
-                        input = batch["img"].to(device=self.device, non_blocking=True)
-                        target = batch["target"].to(
-                            device=self.device, non_blocking=True
-                        )
+                        input = batch["img"].float().cuda(self.device)
+                        target = batch["target"].float().cuda(self.device)
 
                     output, _, loss_stats = self.network(input, target)
                 if evaluator is not None:
@@ -173,10 +174,10 @@ class Trainer(object):
                         input=input, output=output, target=target
                     )
 
-            del input, output, target
-            torch.cuda.empty_cache()
-            del batch
-            gc.collect()
+            # del input, output, target
+            # torch.cuda.empty_cache()
+            # del batch
+            # gc.collect()
 
             loss_stats = self.reduce_loss_stats(loss_stats)
             for k, v in loss_stats.items():
@@ -188,8 +189,8 @@ class Trainer(object):
             val_loss_stats[k] /= data_size
             loss_state.append("{}: {:.4f}".format(k, val_loss_stats[k]))
         print(loss_state)
-        del loss_stats
-        gc.collect()
+        # del loss_stats
+        # gc.collect()
 
         if evaluator is not None:
             result = evaluator.summarize()
@@ -197,5 +198,7 @@ class Trainer(object):
 
         if recorder:
             recorder.record("val", epoch, val_loss_stats)
-            del val_loss_stats
-            gc.collect()
+            # del val_loss_stats
+
+        gc.collect()
+        torch.cuda.empty_cache()

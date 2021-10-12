@@ -1,8 +1,15 @@
 task: "semantic_segm"
 cls_names:
   [
+    "'person'",
+    "bottle",
+    "chair",
+    "cup",
     "tv",
-    "cell phone"
+    "laptop",
+    "mouse",
+    "cell phone",
+    "book",
   ]
 network: "smp"
 model: "unetpp"
@@ -21,7 +28,7 @@ use_amp: True
 train:
   epoch: 1000
   dataset: "COCO2017Train"
-  batch_size: 20
+  batch_size: 30
   num_workers: 2
   batch_sampler: ""
   optim: "adam"
@@ -36,6 +43,6 @@ train:
 
 test:
   dataset: "COCO2017Val"
-  batch_size: 20
+  batch_size: 30
   num_workers: 2
   batch_sampler: ""
