@@ -32,6 +32,7 @@ def train_prof(cfg: CfgNode) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
     torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
@@ -44,7 +45,7 @@ def train_prof(cfg: CfgNode) -> None:
     optimizer = torch.optim.Adam(
         network.parameters(), cfg.train.lr, weight_decay=cfg.train.weight_decay
     )
-    use_amp = True
+    use_amp = False
     scaler = amp.GradScaler(enabled=use_amp)
 
     # network = network.to(device)
@@ -73,18 +74,12 @@ def train_prof(cfg: CfgNode) -> None:
                 # 演算を混合精度でキャスト
                 with amp.autocast(enabled=use_amp):
                     if use_amp:  # もし，混合精度を使用する場合．
-                        # input = batch["img"].to(
-                        #     device=device, dtype=torch.float16, non_blocking=True
-                        # )
                         input = batch["img"].half().cuda(device)
-                        # target = batch["target"].to(
-                        #     device=device, dtype=torch.float16, non_blocking=True
-                        # )
                         target = batch["target"].half().cuda(device)
                     # 混合精度を使用しない場合
                     else:
-                        input = batch["img"].to(device=device, non_blocking=True)
-                        target = batch["target"].to(device=device, non_blocking=True)
+                        input = batch["img"].float().cuda(device)
+                        target = batch["target"].float().cuda(device)
 
                     output = network(input)
 
@@ -93,6 +88,7 @@ def train_prof(cfg: CfgNode) -> None:
 
                 # 損失をスケーリングし、backward()を呼び出してスケーリングされた微分を作成する
                 scaler.scale(loss).backward()
+                print(f"batch_loss: {str(loss)}, batch_iou: {str(iou)}")
                 del input, output, target, loss, iou, batch  # 誤差逆伝播を実行後、計算グラフを削除
                 torch.cuda.empty_cache()
 

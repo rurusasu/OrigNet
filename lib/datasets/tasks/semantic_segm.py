@@ -1,3 +1,4 @@
+import gc
 import os
 import sys
 import random
@@ -8,9 +9,8 @@ sys.path.append("../../../")
 import cv2
 import numpy as np
 import skimage.io as io
-import torch
+import torch.utils.data as data
 from pycocotools.coco import COCO
-from torch.utils.data import Dataset, dataloader
 from torchvision.transforms import Compose
 from yacs.config import CfgNode
 
@@ -59,13 +59,16 @@ def FilterDataset(
         imgIds = coco.getImgIds()
         images = coco.loadImgs(imgIds)
 
-    # del catIds, imgIds
+    del annFile, catIds, imgIds
+    gc.collect()
+
     # Now, filter out the repeated images
     unique_images = []
     for i in range(len(images)):
         if images[i] not in unique_images:
             unique_images.append(images[i])
-    # del images
+    del images
+    gc.collect()
 
     random.shuffle(unique_images)
     dataset_size = len(unique_images)
@@ -88,7 +91,9 @@ def getImage(imgObj, img_folder: str, input_img_size: tuple) -> np.ndarray:
 def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)
-    # del annIds
+    del annIds
+    gc.collect()
+
     cats = coco.loadCats(catIds)
     mask = np.zeros(input_img_size)
     class_names = []
@@ -99,7 +104,8 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
         mask = np.maximum(new_mask, mask)
         class_names.append(className)
 
-    # del anns, cats, className, new_mask, pixel_value
+    del anns, cats, className, new_mask, pixel_value
+    gc.collect()
     # Add extra dimension for parity with train_img size [X * X * 3]
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
 
@@ -110,7 +116,9 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
 def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
     annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
     anns = coco.loadAnns(annIds)  # アノテーションを読みだす
-    # del annIds
+    del annIds
+    gc.collect()
+
     # train_mask = np.zeros(input_img_size)
     mask = np.zeros(input_img_size)
     for id in range(len(anns)):
@@ -123,13 +131,14 @@ def getBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
         # 画素の位置ごとの最大値を返す
         mask = np.maximum(new_mask, mask)
 
-    # del anns, new_mask
+    del anns, new_mask
+    gc.collect()
     # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
     return mask
 
 
-class SegmentationDataset(Dataset):
+class SegmentationDataset(data.Dataset):
     def __init__(
         self,
         cfg: CfgNode,
@@ -143,11 +152,9 @@ class SegmentationDataset(Dataset):
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
         self.cls_names = cfg.cls_names
-        # self.input_img_size = input_img_size
         self.split = split
         self.mask_type = mask_type
 
-        # self.img_dir = os.path.join(self.data_root, self.mode)
         self.img_dir = os.path.join(self.data_root, self.split)
 
         # imgs_info = {
@@ -198,6 +205,7 @@ class SegmentationDataset(Dataset):
             )
 
         del img_info, input_img_size
+        gc.collect()
 
         if self.transforms:
             img = self.transforms(img)

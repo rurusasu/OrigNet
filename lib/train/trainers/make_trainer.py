@@ -32,7 +32,7 @@ def make_trainer(
     """
     wrapper = _wrapper_factory[cfg.task]
     network = wrapper(cfg, network)
-    return Trainer(network, device_name=device_name)
+    return Trainer(network, device_name=device_name, use_amp=cfg.use_amp)
 
 
 if __name__ == "__main__":

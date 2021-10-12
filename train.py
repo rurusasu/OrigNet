@@ -31,7 +31,8 @@ def train(cfg: CfgNode) -> None:
     # cuda が存在する場合，cudaを使用する
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
@@ -40,7 +41,11 @@ def train(cfg: CfgNode) -> None:
     cfg.num_classes = len(train_loader.dataset.cls_names)
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
-    trainer = make_trainer(cfg, network, device_name="auto")
+    trainer = make_trainer(
+        cfg,
+        network,
+        device_name="auto",
+    )
     optimizer = make_optimizer(cfg, network)
     scheduler = make_lr_scheduler(cfg, optimizer)
     recorder = make_recorder(cfg)
@@ -144,6 +149,7 @@ if __name__ == "__main__":
         conf.img_width = 224
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
+        conf.use_amp = False
         conf.ep_iter = -1
         conf.save_ep = 5
         conf.eval_ep = 1

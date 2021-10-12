@@ -49,6 +49,7 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         )
 
         del input, target, iou  # loss と iou 計算後 batch を削除してメモリを確保
+        torch.cuda.empty_cache()
 
         return output, loss, scalar_stats
 
