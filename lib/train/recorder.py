@@ -56,27 +56,12 @@ class Recorder(object):
         self.step = 0
         self.loss_stats = defaultdict(SmoothedValue)
         self.batch_time = SmoothedValue()
-        self.data_time = SmoothedValue()
-
-        # images
-        self.image_statss = defaultdict(object)
-        if "process_" + cfg.task in globals():
-            self.processor = globals()["process_" + cfg.task]
-        else:
-            self.processor = None
 
     def update_loss_stats(self, loss_dict):
         for k, v in loss_dict.items():
             self.loss_stats[k].update(v.detach().cpu())
 
-    def update_image_stats(self, image_stats):
-        if self.processor is None:
-            return
-        image_stats = self.processor(image_stats)
-        for k, v in image_stats.items():
-            self.image_stats[k] = v.detach().cpu()
-
-    def record(self, prefix, step=-1, loss_stats=None, image_stats=None):
+    def record(self, prefix, step=-1, loss_stats=None):
         pattern = prefix + "/{}"
         step = step if step >= 0 else self.step
         loss_stats = loss_stats if loss_stats else self.loss_stats
@@ -86,12 +71,6 @@ class Recorder(object):
                 self.writer.add_scalar(pattern.format(k), v.median, step)
             else:
                 self.writer.add_scalar(pattern.format(k), v, step)
-
-        if self.processor is None:
-            return
-        image_stats = self.processor(image_stats) if image_stats else self.image_stats
-        for k, v in image_stats.items():
-            self.writer.add_image(pattern.format(k), v, step)
 
         del loss_stats
 
@@ -110,13 +89,13 @@ class Recorder(object):
         loss_state = "  ".join(loss_state)
 
         recording_state = "  ".join(
-            ["epoch: {}", "step: {}", "{}", "data: {:.4f}", "batch: {:.4f}"]
+            ["epoch: {}", "step: {}", "{}", "batch_time: {:.3f} sec."]
         )
         return recording_state.format(
             self.epoch,
             self.step,
             loss_state,
-            self.data_time.avg,
+            # self.data_time.avg,
             self.batch_time.avg,
         )
 

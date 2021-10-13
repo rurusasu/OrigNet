@@ -15,9 +15,6 @@ from yacs.config import CfgNode
 
 from lib.config.config import pth
 
-### For visualizing the outputs ###
-import matplotlib.pyplot as plt
-
 
 def getClassName(classID: int, cats: dict):
     for i in range(len(cats)):
@@ -224,33 +221,6 @@ class SegmentationDataset(data.Dataset):
 
     def __len__(self):
         return self.dataset_size
-
-
-# helper function for data visualization
-def visualize(**images):
-    """PLot images in one row."""
-    n = len(images)
-    plt.figure(figsize=(16, 5))
-    for i, (name, image) in enumerate(images.items()):
-        plt.subplot(1, n, i + 1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title(" ".join(name.split("_")).title())
-        plt.imshow(image)
-    plt.show()
-
-
-# ------------------------ #
-# Augmentation Fuction #
-# ------------------------ #
-class ToTensor(object):
-    def __call__(self, x, **kwargs):
-        return x.transpose(2, 0, 1).astype("float32")
-
-
-def get_train_augmentation():
-    _transform = Compose([ToTensor()])
-    return _transform
 
 
 if __name__ == "__main__":

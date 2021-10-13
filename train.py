@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = False
+    debug = True
 
     if debug:
         from yacs.config import CfgNode as CN
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         conf.save_ep = 5
         conf.eval_ep = 1
         conf.train = CN()
-        conf.train.epoch = 3
+        conf.train.epoch = 20
         # cfg.train.dataset = "SampleTrain"
         # cfg.train.dataset = "Sample_2Train"
         # cfg.train.dataset = "BrakeRotorsTrain"
