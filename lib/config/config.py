@@ -116,9 +116,11 @@ def parse_cfg(cfg, args):
     # assign the gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ", ".join([str(gpu) for gpu in cfg.gpus])
 
-    cfg.model_dir = os.path.join(cfg.model_dir, cfg.task, cfg.model)
-    cfg.record_dir = os.path.join(cfg.record_dir, cfg.task, cfg.model)
-    cfg.result_dir = os.path.join(cfg.result_dir, cfg.task, cfg.model)
+    cfg.model_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir)
+    cfg.record_dir = os.path.join(
+        cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+    )
+    cfg.result_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, "result")
 
 
 def make_cfg(args):

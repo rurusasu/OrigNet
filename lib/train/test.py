@@ -31,14 +31,6 @@ def test(cfg: CfgNode):
 
 
 def main(cfg):
-    # データの保存先を設定
-    cfg.result_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.model, "result"
-    )
-    cfg.record_dir = cfg.result_dir
-    cfg.model_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.model, cfg.model_dir
-    )
     test(cfg)
 
 
@@ -69,5 +61,16 @@ if __name__ == "__main__":
     cfg.test.num_workers = 4
     # cfg.test.batch_sampler = "image_size"
     cfg.test.batch_sampler = ""
+
+    # データの保存先を設定
+    cfg.model_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
+    )
+    cfg.record_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+    )
+    cfg.result_dir = os.path.join(
+        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, "result"
+    )
 
     main(cfg)

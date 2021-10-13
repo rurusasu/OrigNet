@@ -77,14 +77,16 @@ def train(cfg: CfgNode) -> None:
 
 
 def main(cfg):
-    # データの保存先を設定
     cfg.model_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
+        pth.DATA_DIR,
+        "trained",
+        cfg.model_dir,
     )
     cfg.record_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+        pth.DATA_DIR,
+        "trained",
+        cfg.record_dir,
     )
-
     # 訓練
     train(cfg)
 
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = True
+    debug = False
 
     if debug:
         from yacs.config import CfgNode as CN
@@ -180,6 +182,13 @@ if __name__ == "__main__":
         conf.test.batch_size = 20
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
+
+        cfg.model_dir = os.path.join(
+            cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
+        )
+        cfg.record_dir = os.path.join(
+            cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+        )
 
         torch.cuda.empty_cache()
         try:

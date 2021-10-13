@@ -1,9 +1,5 @@
 task: "semantic_segm"
-cls_names:
-  [
-    "tv",
-    "cell phone"
-  ]
+cls_names: ["laptop", "tv"]
 network: "smp"
 model: "unetpp"
 encoder_name: "resnet18"
