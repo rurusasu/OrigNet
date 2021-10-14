@@ -4,7 +4,7 @@ import sys
 import time
 from typing import Literal
 
-sys.path.append("../")
+sys.path.append("../../../")
 
 import torch
 from tqdm import tqdm
@@ -84,7 +84,7 @@ class Trainer(object):
                         input = batch["img"].float().cuda(self.device)
                         target = batch["target"].float().cuda(self.device)
 
-                    output, loss, loss_stats = self.network(input, target)
+                    _, loss, loss_stats, image_stats = self.network(input, target)
 
                     if loss.ndim != 0:  # 損失の平均値を計算
                         loss = loss.mean()
@@ -122,13 +122,16 @@ class Trainer(object):
                     )
                     print(training_state)
 
+                    # record loss_stats and image_dict
+                    recorder.update_image_stats(image_stats)
+
                     recorder.record("train")
 
-                    # 【PyTorch】不要になった計算グラフを削除してメモリを節約
-                    # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/
-                    # 誤差逆伝播を実行後、計算グラフを削除
-                    gc.collect()
-                    torch.cuda.empty_cache()
+                # 【PyTorch】不要になった計算グラフを削除してメモリを節約
+                # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/
+                # 誤差逆伝播を実行後、計算グラフを削除
+                gc.collect()
+                torch.cuda.empty_cache()
 
     def val(self, epoch, data_loader, evaluator=None, recorder=None):
         torch.cuda.empty_cache()
@@ -151,7 +154,8 @@ class Trainer(object):
                             input = batch["img"].float().cuda(self.device)
                             target = batch["target"].float().cuda(self.device)
 
-                        output, _, loss_stats = self.network(input, target)
+                        output, _, loss_stats, image_stats = self.network(input, target)
+
                     if evaluator is not None:
                         result = evaluator.evaluate(
                             input=input, output=output, target=target
@@ -174,7 +178,7 @@ class Trainer(object):
             val_loss_stats.update(result)
 
         if recorder:
-            recorder.record("val", epoch, val_loss_stats)
+            recorder.record("val", epoch, val_loss_stats, image_stats)
 
         gc.collect()
         torch.cuda.empty_cache()

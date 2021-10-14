@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # テスト
     import traceback
 
-    debug = False
+    debug = True
 
     if debug:
         from yacs.config import CfgNode as CN
@@ -183,11 +183,11 @@ if __name__ == "__main__":
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
 
-        cfg.model_dir = os.path.join(
-            cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
+        conf.model_dir = os.path.join(
+            conf.task, conf.train.dataset, conf.model, conf.model_dir
         )
-        cfg.record_dir = os.path.join(
-            cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+        conf.record_dir = os.path.join(
+            conf.task, conf.train.dataset, conf.model, conf.record_dir
         )
 
         torch.cuda.empty_cache()

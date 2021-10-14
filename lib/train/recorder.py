@@ -1,11 +1,13 @@
 import os
 import sys
+from typing import Dict, Union
 
 sys.path.append("../../")
 
 from collections import deque, defaultdict
 
 import torch
+import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 
 
@@ -57,20 +59,44 @@ class Recorder(object):
         self.loss_stats = defaultdict(SmoothedValue)
         self.batch_time = SmoothedValue()
 
-    def update_loss_stats(self, loss_dict):
+        # images
+        self.image_stats = defaultdict(object)
+
+    def update_image_stats(self, image_stats: Dict) -> None:
+        """
+        Arg:
+            image_stats(Dict[batch_imgs]):
+            辞書の内部に保存される値は、
+            * 4D形状のミニバッチテンソル (B x C x H x W)
+            * すべて同じサイズの画像のリスト。
+        """
+        for k, v in image_stats.items():
+            self.image_stats[k] = v.detach().cpu()
+
+    def update_loss_stats(self, loss_dict: Dict) -> None:
         for k, v in loss_dict.items():
             self.loss_stats[k].update(v.detach().cpu())
 
-    def record(self, prefix, step=-1, loss_stats=None):
+    def record(
+        self,
+        prefix,
+        step: int = -1,
+        loss_stats: Union[Dict, None] = None,
+        image_stats: Union[Dict, None] = None,
+    ):
         pattern = prefix + "/{}"
         step = step if step >= 0 else self.step
         loss_stats = loss_stats if loss_stats else self.loss_stats
+        image_stats = image_stats if image_stats else self.image_stats
 
         for k, v in loss_stats.items():
             if isinstance(v, SmoothedValue):
                 self.writer.add_scalar(pattern.format(k), v.median, step)
             else:
                 self.writer.add_scalar(pattern.format(k), v, step)
+
+        for k, v in self.image_stats.items():
+            self.writer.add_image(pattern.format(k), vutils.make_grid(v), step)
 
         del loss_stats
 
