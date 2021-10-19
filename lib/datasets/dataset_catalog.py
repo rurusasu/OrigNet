@@ -14,27 +14,27 @@ class DatasetCatalog(object):
     dataset_attrs = {
         "AngleDetectTrain_1": {
             "id": "angle",
-            "data_root": "AngleDetection/TrainingData_1/training",
+            "data_root": "AngleDetection/TrainingData_1",
             "split": "train",
         },
         "AngleDetectVal_1": {
             "id": "angle",
-            "data_root": "AngleDetection/TrainingData_1/validation",
+            "data_root": "AngleDetection/TrainingData_1",
             "split": "val",
         },
         "AngleDetectTrain_2": {
             "id": "angle",
-            "data_root": "AngleDetection/TrainingData_2/training",
+            "data_root": "AngleDetection/TrainingData_2",
             "split": "train",
         },
         "AngleDetectVal_2": {
             "id": "angle",
-            "data_root": "AngleDetection/TrainingData_2/validation",
+            "data_root": "AngleDetection/TrainingData_2",
             "split": "val",
         },
         "AngleDetectTest": {
             "id": "angle",
-            "data_root": "AngleDetection/Test",
+            "data_root": "AngleDetection",
             "split": "test",
         },
         "BrakeRotorsTrain": {
