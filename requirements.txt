@@ -4,6 +4,7 @@ easydict
 flake8
 ipykernel
 matplotlib
+ndjson
 numpy
 opencv-python
 Pillow
