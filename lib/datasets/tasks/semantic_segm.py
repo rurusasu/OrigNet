@@ -159,6 +159,11 @@ class SegmentationDataset(data.Dataset):
 
         self.img_dir = os.path.join(self.data_root, self.split)
 
+        if not os.path.exists(self.img_dir) or not os.path.isdir(self.img_dir):
+            raise FileExistsError(
+                f"The dataset to be used for {cfg.task} could not be read. The path is invalid."
+            )
+            
         # imgs_info = {
         # license: int,
         # file_name: str, 例: 000000495776.jpg

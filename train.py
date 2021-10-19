@@ -101,6 +101,8 @@ if __name__ == "__main__":
     debug = True
 
     if debug:
+        print("訓練をデバッグモードで実行します．")
+
         from yacs.config import CfgNode as CN
 
         conf = CN()
@@ -120,7 +122,8 @@ if __name__ == "__main__":
         conf.eval_ep = 1
         conf.train = CN()
         conf.train.epoch = 15
-        conf.train.dataset = "SampleTrain"
+        # conf.train.dataset = "SampleTrain"
+        conf.train.dataset = "AngleDetectTrain_2"
         conf.train.batch_size = 20
         conf.train.num_workers = 2
         conf.train.batch_sampler = ""
@@ -133,7 +136,7 @@ if __name__ == "__main__":
         conf.train.warp_iter = 10
         conf.train.gamma = 0.5
         conf.test = CN()
-        conf.test.dataset = "SampleTest"
+        conf.test.dataset = "AngleDetectVal_2"
         conf.test.batch_size = 20
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""

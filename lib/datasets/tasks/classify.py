@@ -54,6 +54,12 @@ class ClassifyDataset(data.Dataset):
         self.cfg = cfg
         self.split = split
         self.img_dir = os.path.join(pth.DATA_DIR, data_root, self.split)
+
+        if not os.path.exists(self.img_dir) or not os.path.isdir(self.img_dir):
+            raise FileExistsError(
+                f"The dataset to be used for {cfg.task} could not be read. The path is invalid."
+            )
+
         (
             self.cls_names,
             self.class_to_idx,
