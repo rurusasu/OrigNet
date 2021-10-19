@@ -8,6 +8,7 @@ import ndjson
 import numpy as np
 import skimage.io as io
 import torch
+from tqdm.contrib import tenumerate
 
 
 file_ext = {
@@ -72,7 +73,7 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
     imgs = []
     msks = []
     targets = []
-    for i, p in enumerate(glob(os.path.join(data_root, "*"))):
+    for i, p in tenumerate(glob(os.path.join(data_root, "*"))):
         cls_name = os.path.basename(p.rstrip(os.sep))
         # クラス名のリストを作成
         classes.append(cls_name)
