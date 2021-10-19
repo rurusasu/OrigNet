@@ -126,7 +126,7 @@ class ARCDatasetTransformer(object):
                 )
 
             print("jsonファイルの作成を開始します．")
-            self.CreateSource(self, self.ann_json_pth)
+            self.CreateSource(self.ann_json_pth)
 
     def CreateSource(self, wt_json_pth: str):
         """アノテーションデータを JSON ファイルに出力する関数．
@@ -270,7 +270,11 @@ class ARCDatasetTransformer(object):
 class ARCDataset(object):
     def __init__(self, f_json_pth: str) -> None:
         super(ARCDataset, self).__init__()
-        self.f_json_pth = f_json_pth + ".json"
+        self.f_json_pth = f_json_pth
+        # path に .json が含まれていなければ追加
+        if ".json" not in os.path.splitext(self.f_json_pth)[-1]:
+            self.f_json_pth = self.f_json_pth + ".json"
+
         if not os.path.exists(self.f_json_pth) or not os.path.isfile(self.f_json_pth):
             raise ValueError("`{}` is invalid.".format(self.f_json_pth))
         else:
@@ -285,9 +289,15 @@ if __name__ == "__main__":
     from lib.config.config import pth
 
     root = os.path.join(pth.DATA_DIR, "ARCdataset_png")
-    json_fp = os.path.join(pth.DATA_DIR, "ARCdataset_png", "test")
+    json_fp = os.path.join(
+        pth.DATA_DIR,
+        "ARCdataset_png",
+        "train",
+        "annotations",
+        "instances_train2017.json",
+    )
 
-    ds = ARCDatasetTransformer(root, split="train")
+    # ds = ARCDatasetTransformer(root, split="train")
     # ds.CreateSource(json_fp)
     # save_root_dir = os.path.join(pth.DATA_DIR, "test")
     # ds.CreateContinuousLabelImage(save_img=False, save_root_dir=save_root_dir)
