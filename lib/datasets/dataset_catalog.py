@@ -15,22 +15,37 @@ class DatasetCatalog(object):
         "AngleDetectTrain_1": {
             "id": "angle",
             "data_root": "AngleDetection/TrainingData_1/training",
+            "split": "train",
         },
         "AngleDetectVal_1": {
             "id": "angle",
             "data_root": "AngleDetection/TrainingData_1/validation",
+            "split": "val",
+        },
+        "AngleDetectTrain_2": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_2/training",
+            "split": "train",
+        },
+        "AngleDetectVal_2": {
+            "id": "angle",
+            "data_root": "AngleDetection/TrainingData_2/validation",
+            "split": "val",
         },
         "AngleDetectTest": {
             "id": "angle",
             "data_root": "AngleDetection/Test",
+            "split": "test",
         },
         "BrakeRotorsTrain": {
             "id": "Brake",
             "data_root": "BrakeRotors/casting_data/train",
+            "split": "train",
         },
         "BrakeRotorsTest": {
             "id": "Brake",
             "data_root": "BrakeRotors/casting_data/test",
+            "split": "test",
         },
         "COCO2017Train": {
             "id": "COCO",
@@ -42,11 +57,7 @@ class DatasetCatalog(object):
             "data_root": "COCOdataset2017",
             "split": "val",
         },
-        "COCO2017Test": {
-            "id": "COCO",
-            "data_root": "COCOdataset2017",
-            "split": "test"
-        },
+        "COCO2017Test": {"id": "COCO", "data_root": "COCOdataset2017", "split": "test"},
         "LinemodTrain": {
             "id": "linemod",
             "data_root": "linemod/",

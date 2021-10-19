@@ -15,7 +15,7 @@ eval_ep: 1
 use_amp: True
 
 train:
-  epoch: 1000
+  epoch: 50
   dataset: "COCO2017Train"
   batch_size: 20
   num_workers: 2

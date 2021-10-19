@@ -14,7 +14,7 @@ eval_ep: 1
 
 train:
   epoch: 30
-  dataset: "SampleTrain"
+  dataset: "AngleDetectTrain_2"
   batch_size: 30
   num_workers: 4
   batch_sampler: "image_size"
@@ -28,7 +28,7 @@ train:
   gamma: 0.5
 
 test:
-  dataset: "SampleTest"
+  dataset: "AngleDetectVal_2"
   batch_size: 20
   num_workers: 2
   batch_sampler: "image_size"
