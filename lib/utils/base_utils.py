@@ -144,7 +144,9 @@ def LoadNdjson(json_pth: str) -> Dict:
     Return:
         data (Dict): json ファイルに保存されていたデータ．
     """
-    fp = json_pth + ".json"
+    fp = json_pth
+    if ".json" not in os.path.splitext(fp)[-1]:
+        fp = json_pth + ".json"
     with open(fp) as f:
         data = ndjson.load(f)
 
@@ -163,8 +165,9 @@ def WriteDataToJson(data: Dict, wt_json_pth: str):
     json_data = json.dumps(data)
 
     # path に .json が含まれていなければ追加
-    if ".json" not in os.path.splitext(wt_json_pth)[-1]:
-        fp = wt_json_pth + ".json"
+    fp = wt_json_pth
+    if ".json" not in os.path.splitext(fp)[-1]:
+        fp = fp + ".json"
     # ファイルへの書き込み
     with open(fp, "wt") as f:
         json.dump(json_data, f, ensure_ascii=True)
@@ -182,8 +185,9 @@ def WriteDataToNdjson(data: Dict, wt_json_pth: str):
         wt_json_pth (str): データを書き込む `JSON` ファイルへのパス．
     """
     # path に .json が含まれていなければ追加
-    if ".json" not in os.path.splitext(wt_json_pth)[-1]:
-        fp = wt_json_pth + ".json"
+    fp = wt_json_pth
+    if ".json" not in os.path.splitext(fp)[-1]:
+        fp = fp + ".json"
     # ファイルへの書き込み
     with open(fp, "a") as f:
         writer = ndjson.writer(f)

@@ -13,7 +13,7 @@ import skimage.io as io
 from tqdm.contrib import tenumerate
 
 from lib.visualizers.segmentation import visualize_np
-from lib.utils.base_utils import WriteDataToNdjson
+from lib.utils.base_utils import LoadNdjson, WriteDataToNdjson
 
 # --------------------------------------------- #
 # Amazon Robotic Challenge 2017 Dataset #
@@ -278,7 +278,10 @@ class ARCDataset(object):
         if not os.path.exists(self.f_json_pth) or not os.path.isfile(self.f_json_pth):
             raise ValueError("`{}` is invalid.".format(self.f_json_pth))
         else:
-            df = pd.read_json(self.f_json_pth)
+            print("json ファイルを読みだします．")
+            # source = LoadNdjson(self.f_json_pth)
+
+            df = pd.read_json(self.f_json_pth, lines=True, chunksize=100)
             print(df)
 
 
