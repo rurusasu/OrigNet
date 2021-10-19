@@ -5,16 +5,15 @@ sys.path.append("..")
 sys.path.append("../../")
 sys.path.append("../../../")
 
-from typing import Type, Union, Dict, List
+from typing import Dict, List, Literal, Type, Union
 
-import numpy as np
+import torch
 import torch.utils.data as data
 from torchvision import transforms
 from yacs.config import CfgNode
 
-from lib.datasets.augmentation import augmentation
 from lib.config.config import pth
-from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgs
+from lib.utils.base_utils import GetImgFpsAndLabels, LoadImgAndResize
 
 
 class ClassifyDataset(data.Dataset):
@@ -35,9 +34,9 @@ class ClassifyDataset(data.Dataset):
         self,
         cfg: CfgNode,
         data_root: str,
-        split: str,
+        split: Literal["train", "val", "test"] = "train",
         cls_names: List[str] = None,
-        transforms: transforms = None,
+        transforms: Union[transforms.Compose, None] = None,
     ) -> None:
         super(ClassifyDataset, self).__init__()
 
@@ -62,7 +61,7 @@ class ClassifyDataset(data.Dataset):
             self.targets,
             _,
         ) = GetImgFpsAndLabels(self.img_dir)
-        self._transforms = transforms
+        self.transforms = transforms
 
     def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
         """
@@ -87,27 +86,20 @@ class ClassifyDataset(data.Dataset):
         else:
             raise TypeError("Invalid type for variable index")
 
-        # images (rgb, mask) の読み出し
-        imgs = LoadImgs(self.img_fps, img_id)
-
-        if len(imgs["img"].shape) == 2:
-            imgs["img"] = np.stack([imgs["img"], imgs["img"], imgs["img"]], axis=2)
-        elif len(imgs["img"].shape) == 3:
-            pass
-        else:
-            raise ValueError("Incorrect way of giving image size.")
-
-        # `OpenCV` および `numpy` を用いたデータ拡張
-        if self.split == "train":
-            imgs = augmentation(imgs, height, width, self.split)
+        input_img_size = {}
+        input_img_size["w"] = width
+        input_img_size["h"] = height
+        # 画像を読みだす
+        img_fp = self.img_fps[img_id]
+        img = LoadImgAndResize(img_fp, input_img_size=input_img_size)
 
         # `transforms`を用いた変換がある場合は行う．
-        if self._transforms is not None:
-            imgs["img"] = self._transforms(imgs["img"])
+        if self.transforms is not None:
+            img, _ = self.transforms.augment(img=img)
 
         ret = {
-            "img": imgs["img"],
-            "target": self.targets[img_id],
+            "img": img,
+            "target": torch.tensor(self.targets[img_id]),
             "meta": self.split,
             "cls_names": self.cls_names[self.targets[img_id]],
         }
@@ -119,15 +111,22 @@ class ClassifyDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    from yacs.config import CfgNode as CN
-    from lib.datasets.make_datasets import make_dataset
+    from lib.datasets.make_datasets import make_data_loader
+    from lib.visualizers.segmentation import visualize
 
-    cfg = CN()
+    cfg = CfgNode()
     cfg.task = "classify"
     cfg.img_width = 200
     cfg.img_height = 200
-    cfg.train = CN()
+    cfg.train = CfgNode()
     cfg.train.dataset = "SampleTrain"
+    cfg.train.batch_size = 4
+    cfg.train.num_workers = 2
+    cfg.train.batch_sampler = ""
 
-    dataset = make_dataset(cfg, cfg.train.dataset)
-    print(dataset)
+    dloader = make_data_loader(cfg, is_train=True)
+    batch_iter = iter(dloader)
+    batch = next(batch_iter)
+    img, _ = batch["img"], batch["target"]
+    img = img[1, :, :, :]
+    visualize(imgs=img)

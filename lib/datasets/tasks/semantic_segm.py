@@ -1,7 +1,7 @@
 import os
 import sys
 import random
-from typing import List, Literal, Union
+from typing import Dict, List, Literal, Union
 
 sys.path.append("../../../")
 
@@ -10,7 +10,7 @@ import numpy as np
 import skimage.io as io
 import torch.utils.data as data
 from pycocotools.coco import COCO
-from torchvision.transforms import Compose
+from torchvision import transforms
 from yacs.config import CfgNode
 
 from lib.config.config import pth
@@ -72,11 +72,13 @@ def FilterDataset(
     return unique_images, dataset_size, coco
 
 
-def getImage(imgObj, img_folder: str, input_img_size: tuple) -> np.ndarray:
+def getImage(imgObj, img_folder: str, input_img_size: Dict) -> np.ndarray:
     # Read and normalize an image
+    # ndarray([H, W, C])
     img = io.imread(os.path.join(img_folder, imgObj["file_name"])) / 255.0
-    # Resize
-    img = cv2.resize(img, input_img_size)
+    # Resize: [H, W, C] -> [H', W', C]
+    # 変数が，[W, H] で与える点に注意
+    img = cv2.resize(img, (input_img_size["w"], input_img_size["h"]))
     if len(img.shape) == 3 and img.shape[2] == 3:  # If it is a RGB 3 channel image
         return img
     else:  # 白黒の画像を扱う場合は、次元を3にする
@@ -91,19 +93,23 @@ def getNormalMask(imgObj, cls_names, coco, catIds, input_img_size):
     # gc.collect()
 
     cats = coco.loadCats(catIds)
-    mask = np.zeros(input_img_size)
+    mask = np.zeros((input_img_size["h"], input_img_size["w"]))  # mask [H, W]
     class_names = []
     for a in range(len(anns)):
         className = getClassName(anns[a]["category_id"], cats)
         pixel_value = cls_names.index(className) + 1
-        new_mask = cv2.resize(coco.annToMask(anns[a]) * pixel_value, input_img_size)
+        # ndarray [H, W] -> ndarray[H', W']
+        new_mask = cv2.resize(
+            coco.annToMask(anns[a]) * pixel_value,
+            (input_img_size["w"], input_img_size["h"]),
+        )
         mask = np.maximum(new_mask, mask)
         class_names.append(className)
 
     # del anns, cats
     # gc.collect()
     # Add extra dimension for parity with train_img size [X * X * 3]
-    mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+    # mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
 
     # すべての
     return mask, class_names
@@ -143,7 +149,7 @@ class SegmentationDataset(data.Dataset):
         # input_img_size: tuple = (224, 224),
         split: Literal["train", "val", "test"] = "train",
         mask_type: Literal["binary", "normal"] = "normal",
-        transforms: Union[Compose, None] = None,
+        transforms: Union[transforms.Compose, None] = None,
     ):
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
@@ -177,14 +183,16 @@ class SegmentationDataset(data.Dataset):
         elif (
             type(img_id) is int and "img_width" in self.cfg and "img_height" in self.cfg
         ):
-            height, width = self.cfg.img_width, self.cfg.img_height
+            width, height = self.cfg.img_width, self.cfg.img_height
         else:
             raise TypeError("Invalid type for variable index")
 
         img_info = self.imgs_info[img_id]
         del img_id
 
-        input_img_size = (width, height)
+        input_img_size = {}
+        input_img_size["w"] = width
+        input_img_size["h"] = height
         ### Retrieve Image ###
         img = getImage(
             imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
@@ -203,9 +211,10 @@ class SegmentationDataset(data.Dataset):
         # del img_info, input_img_size
         # gc.collect()
 
-        if self.transforms:
-            img = self.transforms(img)
-            mask = self.transforms(mask)
+        if self.transforms is not None:
+            img, mask = self.transforms.augment(img=img, mask=mask)
+            # img = self.transforms(img)
+            # mask = self.transforms(mask)
 
         # ndarray -> tensor
         # img = torch.from_numpy(img.astype(np.float32)).clone()
@@ -225,18 +234,27 @@ class SegmentationDataset(data.Dataset):
 
 if __name__ == "__main__":
     from lib.datasets.make_datasets import make_data_loader
+    from lib.visualizers.segmentation import visualize
 
     cfg = CfgNode()
     cfg.task = "semantic_segm"
     cfg.cls_names = ["laptop", "tv"]
-    cfg.img_width = 200
+    cfg.img_width = 600
     cfg.img_height = 200
     cfg.train = CfgNode()
     cfg.train.dataset = "COCO2017Val"
     cfg.train.batch_size = 4
     cfg.train.num_workers = 2
     cfg.train.batch_sampler = ""
+    cfg.test = CfgNode()
+    cfg.test.dataset = "COCO2017Val"
+    cfg.test.batch_size = 4
+    cfg.test.num_workers = 2
+    cfg.test.batch_sampler = ""
 
     dloader = make_data_loader(cfg, is_train=True)
-    for iter, batch in enumerate(dloader):
-        img, mask = batch["img"], batch["target"]
+    batch_iter = iter(dloader)
+    batch = next(batch_iter)
+    img, mask = batch["img"], batch["target"]
+    img, mask = img[1, :, :, :], mask[1, :, :]
+    visualize(imgs=img, msk=mask)

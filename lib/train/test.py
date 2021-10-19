@@ -16,15 +16,15 @@ from lib.utils.net_utils import load_network
 
 
 def test(cfg: CfgNode):
-    # cuda が存在する場合，cudaを使用する
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # 検証用のデータローダーを作成
     val_loader = make_data_loader(cfg, is_train=False)
 
-    cfg.num_classes = len(val_loader.dataset.cls_names)
-    network = make_network(cfg).to(device)
+    # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
+    # 理由は，画素値が 0 のラベルを与える必要があるため．
+    cfg.num_classes = len(val_loader.dataset.cls_names) + 1
+    network = make_network(cfg)
 
-    trainer = make_trainer(cfg, network, device)
+    trainer = make_trainer(cfg, network, device_name="auto")
     evaluator = make_evaluator(cfg)
     epoch = load_network(network, cfg.model_dir)
     trainer.val(epoch, val_loader, evaluator)
@@ -51,8 +51,10 @@ if __name__ == "__main__":
     cfg.ep_iter = -1
     cfg.skip_eval = False
     cfg.train = CfgNode()
+    cfg.train.dataset = "COCO2017Val"
     cfg.train.criterion = ""
     cfg.train.metrics = "iou"
+    cfg.use_amp = False
     cfg.test = CfgNode()
     # cfg.test.dataset = "SampleTest"
     # cfg.test.dataset = "BrakeRotorsTest"
@@ -67,10 +69,10 @@ if __name__ == "__main__":
         pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
     )
     cfg.record_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
+        pth.DATA_DIR, "trained", cfg.task, cfg.test.dataset, cfg.model, cfg.record_dir
     )
     cfg.result_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, "result"
+        pth.DATA_DIR, "trained", cfg.task, cfg.test.dataset, cfg.model, "result"
     )
 
     main(cfg)

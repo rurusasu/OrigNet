@@ -1,10 +1,9 @@
 import os
 import sys
+from collections import deque, defaultdict
 from typing import Dict, Union
 
 sys.path.append("../../")
-
-from collections import deque, defaultdict
 
 import torch
 import torchvision.utils as vutils
@@ -96,6 +95,12 @@ class Recorder(object):
                 self.writer.add_scalar(pattern.format(k), v, step)
 
         for k, v in self.image_stats.items():
+            # RGB かつ [0, 1] の範囲の値を持つ場合
+            if len(v.size()) == 3:
+                b_size, h, w = v.size()[0], v.size()[1], v.size()[2]
+                v = v.view(b_size, -1, h, w)
+
+            v = v.float() if v.dtype != torch.float32 else v
             self.writer.add_image(pattern.format(k), vutils.make_grid(v), step)
 
         del loss_stats

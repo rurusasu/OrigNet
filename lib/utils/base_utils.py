@@ -1,11 +1,13 @@
+import json
 import os
 from glob import glob
-from typing import Dict, List, Union
+from typing import Dict
 
 import cv2
+import ndjson
 import numpy as np
+import skimage.io as io
 import torch
-from PIL import Image
 
 
 file_ext = {
@@ -107,42 +109,84 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
     return classes, class_to_idx, imgs, targets, msks
 
 
-def LoadImgs(
-    img_fps: List[str], img_id: int, msk_fps: Union[List[str], None] = None
-) -> Dict[np.ndarray, np.ndarray]:
+def LoadImgAndResize(img_fp: str, input_img_size: Dict[int, int]) -> np.ndarray:
     """
     画像パスのリストから、id で指定された画像を読みだす関数
 
     Args:
-        img_fps (List[str]): 画像パスのリスト
-        img_id (int): 読みだすパス番号
-        msk_fps (Union[List[str], None], optional): マスク画像パスのリスト．Default to None.
+        img_fp (str): 画像ファイルパス
+        input_img_size (Tuple[int, int]): 画像のサイズ．
+        例: input_img_size{ "w" : 255, "h" : 255 }
 
     Returns:
-        imgs (Dict[img:np.ndarray, msk:np.ndarray]): 画像とそのマスク画像が保存された辞書
+        np.ndarray: `[H, W, 3]` の ndarray
     """
-    imgs = {}
-    # 画像を読みだす
-    img_fp = img_fps[img_id]
-    # 注意していただきたいのは、マスクをRGBに変換していないことです。なぜなら、それぞれの色は異なるインスタンスに対応しており、0はバックグラウンドだからです。
-    img = Image.open(img_fp).convert("RGB")
-    # PIL -> OpenCV 型(numpy)に変換
-    img = np.array(img, dtype=np.uint8)
+    # Read and normalize an image
+    # ndarray([H, W, C])
+    img = io.imread(img_fp) / 255.0
+    # Resize: [H, W, C] -> [H', W', C]
+    # 変数が，[W, H] で与える点に注意
+    img = cv2.resize(img, (input_img_size["w"], input_img_size["h"]))
+    if len(img.shape) == 3 and img.shape[2] == 3:  # If it is a RGB 3 channel image
+        return img
+    else:  # 白黒の画像を扱う場合は、次元を3にする
+        stacked_img = np.stack((img,) * 3, axis=-1)
+        return stacked_img
 
-    if msk_fps:
-        msk_fp = msk_fps[img_id]
-        msk = cv2.imread(msk_fp, 0)
-        # msk = Image.open(msk_fp)
-        # msk = np.array(msk)
 
-        assert img.shape[0] == msk.shape[0], "サイズ不一致"
-        assert img.shape[1] == msk.shape[1], "サイズ不一致"
+def LoadNdjson(json_pth: str) -> Dict:
+    """
+    WriteDataToNdjson を使って保存した JSON ファイルからデータを読みだす関数．
 
-    else:
-        msk = []
+    Args:
+        json_pth (str): 読み出す json ファイル．
 
-    imgs["img"], imgs["msk"] = img, msk
-    return imgs
+    Return:
+        data (Dict): json ファイルに保存されていたデータ．
+    """
+    fp = json_pth + ".json"
+    with open(fp) as f:
+        data = ndjson.load(f)
+
+    return data
+
+
+def WriteDataToJson(data: Dict, wt_json_pth: str):
+    """
+    データを JSON ファイルに出力する関数．
+
+    Args:
+        data(Dict): json ファイルに出力するデータ．
+        wt_json_pth (str): データを書き込む `JSON` ファイルへのパス．
+    """
+    # Dict -> Json
+    json_data = json.dumps(data)
+    if ".json" in os.path.splitext(wt_json_pth)[-1]:
+        fp = wt_json_pth + ".json"
+    # ファイルへの書き込み
+    with open(fp, "wt") as f:
+        json.dump(json_data, f, ensure_ascii=True)
+
+
+def WriteDataToNdjson(data: Dict, wt_json_pth: str):
+    """
+    データを追記する形で JSON ファイルに出力する関数．
+    json は，保存したい全てのデータを一度読みだしておく必要があるが ndjson は，1つ1つのデータを順次保存することができる．
+    ndjson の使い方については以下を参照．
+    REF: https://qiita.com/eg_i_eg/items/aff02f6057b476cb15fa
+
+    Args:
+        data (Dict): json ファイルに出力するデータ．
+        wt_json_pth (str): データを書き込む `JSON` ファイルへのパス．
+    """
+    # Dict -> Json
+    # json_data = json.dumps(data)
+    if ".json" in os.path.splitext(wt_json_pth)[-1]:
+        fp = wt_json_pth + ".json"
+    # ファイルへの書き込み
+    with open(fp, "a") as f:
+        writer = ndjson.writer(f)
+        writer.writerow(data)
 
 
 if __name__ == "__main__":

@@ -30,19 +30,21 @@ class ClassifyNetworkWrapper(nn.Module):
         output = self.net(input)
 
         # スカラステータス（）
-        scalar_stats = {}
         loss = 0
+        image_stats = {}
+        scalar_stats = {}
 
         loss = self.criterion(output, target)
 
-        axis = 1
-        _, preds = torch.max(output, axis)
-        acc = torch.sum(preds == target) / len(input.size()[0])
+        _, preds = torch.max(output, axis=1)
+        acc = torch.sum(preds == target) / input.size()[0]
 
+        image_stats.update({"input": input.detach().clone().cpu()})
         scalar_stats.update(
             {"batch_loss": loss.detach().clone(), "batch_acc": acc.detach().clone()}
         )
 
         del input, target, acc  # loss と iou 計算後 batch を削除してメモリを確保
+        torch.cuda.empty_cache()
 
-        return output, loss, scalar_stats
+        return output, loss, scalar_stats, image_stats

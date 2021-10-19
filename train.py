@@ -28,8 +28,6 @@ def train(cfg: CfgNode) -> None:
     if "train" not in cfg:
         raise ("The training configuration is not set.")
 
-    # cuda が存在する場合，cudaを使用する
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
@@ -38,7 +36,12 @@ def train(cfg: CfgNode) -> None:
     train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
     val_loader = make_data_loader(cfg, is_train=False)
 
-    cfg.num_classes = len(train_loader.dataset.cls_names)
+    # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
+    if cfg.task == "classify":
+        cfg.num_classes = len(train_loader.dataset.cls_names)
+    elif cfg.task == "semantic_segm":
+        # 理由は，画素値が 0 のラベルを与える必要があるため．
+        cfg.num_classes = len(train_loader.dataset.cls_names) + 1
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
     trainer = make_trainer(
@@ -100,44 +103,42 @@ if __name__ == "__main__":
     if debug:
         from yacs.config import CfgNode as CN
 
-        """
-        cfg = CN()
-        cfg.task = "classify"
-        cfg.network = "cnns"
-        cfg.model = "res_18"
-        cfg.cls_names = ["laptop", "tv"]
-        cfg.encoder_name = "resnet18"
-        cfg.model_dir = "model"
-        cfg.train_type = "transfer"  # or scratch
-        # cfg.train_type = "scratch"
-        cfg.img_width = 224
-        cfg.img_height = 224
-        cfg.resume = True  # 追加学習するか
-        cfg.record_dir = "record"
-        cfg.ep_iter = -1
-        cfg.save_ep = 5
-        cfg.eval_ep = 1
-        cfg.train = CN()
-        cfg.train.epoch = 15
-        cfg.train.dataset = "SampleTrain"
-        cfg.train.batch_size = 4
-        cfg.train.num_workers = 2
-        cfg.train.batch_sampler = ""
-        cfg.train.optim = "adam"
-        cfg.train.criterion = ""
-        cfg.train.lr = 1e-3
-        cfg.train.scheduler = "step_lr"
-        cfg.train.weight_decay = 0.0
-        cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
-        cfg.train.gamma = 0.5
-        cfg.train.metrics = "iou"
-        cfg.test = CN()
-        cfg.test.dataset = "SampleTest"
-        cfg.test.batch_size = 20
-        cfg.test.num_workers = 2
-        cfg.test.batch_sampler = ""
-        """
+        conf = CN()
+        conf.task = "classify"
+        conf.network = "cnns"
+        conf.model = "res_18"
+        conf.model_dir = "model"
+        conf.train_type = "transfer"  # or scratch
+        # conf.train_type = "scratch"
+        conf.img_width = 224
+        conf.img_height = 224
+        conf.resume = True  # 追加学習するか
+        conf.use_amp = False  # 半精度で訓練するか
+        conf.record_dir = "record"
+        conf.ep_iter = -1
+        conf.save_ep = 5
+        conf.eval_ep = 1
+        conf.train = CN()
+        conf.train.epoch = 15
+        conf.train.dataset = "SampleTrain"
+        conf.train.batch_size = 20
+        conf.train.num_workers = 2
+        conf.train.batch_sampler = ""
+        conf.train.optim = "adam"
+        conf.train.criterion = ""
+        conf.train.lr = 1e-3
+        conf.train.scheduler = "step_lr"
+        conf.train.weight_decay = 0.0
+        conf.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+        conf.train.warp_iter = 10
+        conf.train.gamma = 0.5
+        conf.test = CN()
+        conf.test.dataset = "SampleTest"
+        conf.test.batch_size = 20
+        conf.test.num_workers = 2
+        conf.test.batch_sampler = ""
 
+        """
         conf = CN()
         conf.cls_names = ["laptop", "tv"]
         conf.task = "semantic_segm"
@@ -156,7 +157,7 @@ if __name__ == "__main__":
         conf.save_ep = 5
         conf.eval_ep = 1
         conf.train = CN()
-        conf.train.epoch = 20
+        conf.train.epoch = 100
         # cfg.train.dataset = "SampleTrain"
         # cfg.train.dataset = "Sample_2Train"
         # cfg.train.dataset = "BrakeRotorsTrain"
@@ -182,6 +183,7 @@ if __name__ == "__main__":
         conf.test.batch_size = 20
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
+        """
 
         conf.model_dir = os.path.join(
             conf.task, conf.train.dataset, conf.model, conf.model_dir

@@ -4,8 +4,9 @@ sys.path.append("../../../")
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import segmentation_models_pytorch as smp
-from torch.autograd import Variable
+
 from yacs.config import CfgNode
 
 from lib.train.metricses import make_metrics
@@ -28,7 +29,10 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         self.net = net
 
         # 損失関数 (criterion) を選択
-        self.criterion = smp.utils.losses.DiceLoss()
+        if cfg.train.criterion == "DiceLoss":
+            self.criterion = smp.utils.losses.DiceLoss()
+        else:
+            self.criterion = nn.CrossEntropyLoss()
 
         # 評価指標 (metrics) を選択
         # self.metrics = make_metrics(cfg)
@@ -42,22 +46,26 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         image_stats = {}
         scalar_stats = {}
 
-        loss = self.criterion(output, target)
-        iou = self.metrics(output, target)
+        loss = self.criterion(output, target.long())
+        # loss = F.cross_entropy(output, target, reduction="mean")
+        # iou = self.metrics(output, target)
 
         image_stats.update(
             {
-                "input": input.detach().clone(),
-                "target": target.detach().clone(),
-                "output": output.detach().clone(),
+                "input": input.detach().clone().cpu(),
+                "target": target.detach().clone().cpu(),
+                "output": output.detach().clone().cpu(),
             }
         )
 
         scalar_stats.update(
-            {"batch_loss": loss.detach().clone(), "batch_iou": iou.detach().clone()}
+            {
+                "batch_loss": loss.detach().clone().cpu(),
+                # "batch_iou": iou.detach().clone()
+            }
         )
 
-        del input, target, iou  # loss と iou 計算後 batch を削除してメモリを確保
+        del input, target  # loss と iou 計算後 batch を削除してメモリを確保
         torch.cuda.empty_cache()
 
         return output, loss, scalar_stats, image_stats
