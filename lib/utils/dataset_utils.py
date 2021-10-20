@@ -11,6 +11,7 @@ sys.path.append("../../")
 import cv2
 import numpy as np
 import pandas as pd
+import scipy.stats as stats
 import skimage.io as io
 from tqdm.contrib import tenumerate
 
@@ -253,47 +254,49 @@ class ARCDatasetTransformer(object):
         Return:
             conlbl(np.ndarray): 連続値のラベルに変換した ([H, W]) の画像．
         """
-        conlbl = None
+        # conlbl = None
         conlbl = RGB.copy()
 
         # pixel value > 0 の 位置の画素値を取得
-        #  セグメンテーション領域内にオブジェクト同士が重なっている場所がある場合
-        # seg_img = [R, G, B, A] で保存されているため，後の r, g, b = cv2.split() がエラーになる．
+
         if conlbl.shape[2] > 3:
             # conlbl = np.delete(conlbl, axis=4)
             conlbl = conlbl[:, :, :3]
 
-            # 白である
-            w_pix = (
-                (conlbl[..., 0] == 255)
-                & (conlbl[..., 1] == 255)
-                & (conlbl[..., 2] == 255)
-            )
-            # 黒である
-            bk_pix = (
-                (conlbl[..., 0] == 0) & (conlbl[..., 1] == 0) & (conlbl[..., 2] == 0)
-            )
+        #  セグメンテーション領域内にオブジェクト同士が重なっている場所がある場合
+        # その領域だけ，[255, 255, 255] の画素値を持つのでラベル変換の際にエラーが生じる．
+        # そこで，[255, 255, 255] の画素値をその他のセグメンテーション領域の画素値と同じ値に置き換える．
+        # REF: https://teratail.com/questions/100301
 
-            # 白でない
-            not_w_pix = np.logical_not(w_pix)
-            not_bk_pix = np.logical_not(bk_pix)
-            pix = np.logical_and(not_w_pix, not_bk_pix)
-            # orig_shape = (pix.shape[0], pix.shape[1], -1)
+        # 白である
+        w_pix = (
+            (conlbl[..., 0] == 255) & (conlbl[..., 1] == 255) & (conlbl[..., 2] == 255)
+        )
+        # 黒である
+        bk_pix = (conlbl[..., 0] == 0) & (conlbl[..., 1] == 0) & (conlbl[..., 2] == 0)
+        not_w_pix = np.logical_not(w_pix)  # 白でない
+        not_bk_pix = np.logical_not(bk_pix)  # 黒でない
+        # 白でない かつ 黒でない 領域からラベルの画素値を抽出
+        pix = np.logical_and(not_w_pix, not_bk_pix)
 
-            pv = conlbl[pix][0]
+        # 抽出した画素値の中の最頻値をラベルの画素値と仮定．
+        # オクルージョン領域(255, 255, 255) と 背景(0, 0, 0) は外しているので，
+        # この方法で，ノイズがあったとしても正しい画素値を抽出できるはず．
+        # REF: https://python.atelierkobato.com/mode/
+        x = conlbl[pix]
+        pv, _ = stats.mode(x, axis=0)
 
-            # lbl_img = lbl_img.reshape(orig_shape)
-            # point = np.nonzero(lbl_img)
-            # pv = lbl_img[point[0][0]][point[1][0]]
-            conlbl[w_pix] = pv
-            from matplotlib import pyplot as plt
+        # 画素値を置き換え
+        conlbl[w_pix] = pv
 
-            fig = plt.figure()
-            plt.imshow(conlbl)
-            plt.show()
+        # -------------------------------------
+        # デバッグの際の画像表示用
+        # from matplotlib import pyplot as plt
+        # fig = plt.figure()
+        # plt.imshow(conlbl)
+        # plt.show()
+        # -------------------------------------
 
-        r, g, b = cv2.split(conlbl)
-        pv = np.array([r.max(), g.max(), b.max()])
         lbl_value = [
             v[0] for _, v in PixelValueToLabel.items() if np.allclose(v[1], pv)
         ][0]
