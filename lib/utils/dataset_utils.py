@@ -4,6 +4,8 @@ import sys
 from glob import glob
 from typing import Dict, List, Literal
 
+from torch.utils import data
+
 sys.path.append("../../")
 
 import cv2
@@ -95,7 +97,7 @@ PixelValueToLabel = {
     ],
     "item40": [
         np.array([40], dtype=np.uint8),
-        np.array([255, 85, 170], dtype=np.uint8),
+        np.array([0, 170, 170], dtype=np.uint8),
     ],
 }
 
@@ -116,7 +118,7 @@ class ARCDatasetTransformer(object):
         if not os.path.exists(self.ann_json_pth):
             if not os.path.exists(self.ann_dir_pth):
                 print(f"{self.ann_dir_pth} にディレクトリが存在しません．ディレクトリを再度作成します．")
-                os.makedirs(self.ann_dir_pth)
+                os.makedirs(self.ann_dir_pth, exist_ok=True)
 
             print(f"{self.ann_json_pth} にファイルが存在しなかったので，json ファイルを再度作成します．")
             if not os.path.exists(self.seg_img_conlbl_dir):
@@ -144,7 +146,8 @@ class ARCDatasetTransformer(object):
             if os.path.isfile(img_pth) and os.path.splitext(img_pth)[1] in file_ext:
                 image_id.append(os.path.splitext(os.path.basename(img_pth))[0])
 
-        for id, img_id in tenumerate(image_id):
+        id = 0
+        for _, img_id in tenumerate(image_id):
             # 画像のファイル名と同じディレクトリを seg_instance から検索．
             seg_img_dir = os.path.join(self.seg_img_conlbl_dir, img_id + "_s")
             for seg_pth in glob(os.path.join(seg_img_dir, "**"), recursive=True):
@@ -157,21 +160,25 @@ class ARCDatasetTransformer(object):
                     # 画素値の値を label に変換
                     pv = seg_img[pix_x[0]][pix_y[0]]  # 1つの画素値を取得
                     category_id = [
-                        k
-                        for k, v in PixelValueToLabel.items()
-                        if v[0].all() == pv.all()
+                        v[0]
+                        for _, v in PixelValueToLabel.items()
+                        if np.allclose(v[0], pv)
                     ][0]
 
                     # すべてのデータが揃っているか判定．
                     if (image_id is not None) and (category_id is not None):
+                        id += 1
+                        # 画像情報 & アノテーション情報
                         source = {
-                            # アノテーション情報
-                            str(id): {
-                                "segmentation": [pix_x.tolist(), pix_y.tolist()],
+                            "img_info": {
                                 "image_id": img_id,
-                                "category_id": category_id,
                                 "id": id,
-                            }
+                                "imgs": {"file_name": str(img_id) + ".png", "id": id},
+                            },
+                            "anns": {
+                                "category_id": category_id.max().tolist(),
+                                "segmentation": [pix_x.tolist(), pix_y.tolist()],
+                            },
                         }
 
                         WriteDataToNdjson(source, wt_json_pth)
@@ -221,11 +228,13 @@ class ARCDatasetTransformer(object):
             if os.path.isfile(seg_pth) and os.path.splitext(seg_pth)[1] in file_ext:
                 # ラベル画像の読み出し．
                 seg_img = io.imread(seg_pth)
-                # Resize: [H, W, C] -> [H', W', C]
-                # 変数が，[W, H] で与える点に注意
-                seg_img = cv2.resize(seg_img, (img_size["w"], img_size["h"]))
+
                 print(f"{os.path.basename(seg_pth)} を gray scale label に変換します．")
                 gray_img = self.__RGBLabelToContinuousLabel(seg_img)
+
+                # Resize: [H, W, C] -> [H', W', C]
+                # 変数が，[W, H] で与える点に注意
+                gray_img = cv2.resize(gray_img, (img_size["w"], img_size["h"]))
 
                 # 作成した画像を保存する場合
                 if save_img:
@@ -253,10 +262,40 @@ class ARCDatasetTransformer(object):
         if conlbl.shape[2] > 3:
             # conlbl = np.delete(conlbl, axis=4)
             conlbl = conlbl[:, :, :3]
+
+            # 白である
+            w_pix = (
+                (conlbl[..., 0] == 255)
+                & (conlbl[..., 1] == 255)
+                & (conlbl[..., 2] == 255)
+            )
+            # 黒である
+            bk_pix = (
+                (conlbl[..., 0] == 0) & (conlbl[..., 1] == 0) & (conlbl[..., 2] == 0)
+            )
+
+            # 白でない
+            not_w_pix = np.logical_not(w_pix)
+            not_bk_pix = np.logical_not(bk_pix)
+            pix = np.logical_and(not_w_pix, not_bk_pix)
+            # orig_shape = (pix.shape[0], pix.shape[1], -1)
+
+            pv = conlbl[pix][0]
+
+            # lbl_img = lbl_img.reshape(orig_shape)
+            # point = np.nonzero(lbl_img)
+            # pv = lbl_img[point[0][0]][point[1][0]]
+            conlbl[w_pix] = pv
+            from matplotlib import pyplot as plt
+
+            fig = plt.figure()
+            plt.imshow(conlbl)
+            plt.show()
+
         r, g, b = cv2.split(conlbl)
         pv = np.array([r.max(), g.max(), b.max()])
         lbl_value = [
-            v[0] for _, v in PixelValueToLabel.items() if v[1].all() == pv.all()
+            v[0] for _, v in PixelValueToLabel.items() if np.allclose(v[1], pv)
         ][0]
 
         # RGB Seg_img をグレー化
@@ -280,12 +319,49 @@ class ARCDataset(object):
         else:
             print("json ファイルを読みだします．")
             # source = LoadNdjson(self.f_json_pth)
+            # result = []
 
-            df = pd.read_json(self.f_json_pth, lines=True, chunksize=100)
-            print(df)
+            self.df = pd.read_json(self.f_json_pth, orient="record", lines=True)
+            self.df = pd.json_normalize(self.df.to_dict("records"), sep="_")
+
+    def getCatIds(self, catNms: str) -> np.ndarray:
+        """
+        カテゴリの名前 (str) を対応するラベルの値 ndarray[int] に変換する関数．
+        例: "item10" -> ndarray([10], dtype=uint8)
+
+        Args:
+            catNms (str): ARCDatasetのカテゴリ名．
+
+        Returns:
+            (ndarray): ラベル値．
+        """
+        return PixelValueToLabel[catNms][0]
+
+    def getImgIds(self, catIds: np.ndarray) -> List[int]:
+        """ラベル値 ndarray[int] と一致するデータ番号 (id) のリストを返す関数．
+
+        Args:
+            catIds (List[int]): ラベル値の ndarray 配列．
+
+        Returns:
+            List[int]: データ番号 (id) のリスト．例: [1, 2, 3, ]
+        """
+        df = self.df.query(f"anns_category_id in {catIds}")
+        return df["img_info_id"].tolist()
+
+    def loadImgs(self, imgIds: List[int]):
+        """
+
+        Args:
+            imgIds (List[int]): [description]
+        """
+
+    def get_df(self):
+        return self.df
 
 
 if __name__ == "__main__":
+    import pprint
     import sys
 
     sys.path.append("../../")
@@ -300,7 +376,7 @@ if __name__ == "__main__":
         "instances_train2017.json",
     )
 
-    # ds = ARCDatasetTransformer(root, split="train")
+    ds = ARCDatasetTransformer(root, split="train")
     # ds.CreateSource(json_fp)
     # save_root_dir = os.path.join(pth.DATA_DIR, "test")
     # ds.CreateContinuousLabelImage(save_img=False, save_root_dir=save_root_dir)
@@ -310,4 +386,13 @@ if __name__ == "__main__":
     # seg_img = io.imread(seg_pth)
     # ds.RGBLabelToContinuousLabel(seg_img)
 
-    ARCDataset(json_fp)
+    dataset = ARCDataset(json_fp)
+    df = dataset.get_df()
+    pprint.pprint(df)
+
+    catNms = "item1"
+    catIds = dataset.getCatIds(catNms)
+    print(catIds)
+
+    imgIds = dataset.getImgIds(catIds)
+    print(imgIds)

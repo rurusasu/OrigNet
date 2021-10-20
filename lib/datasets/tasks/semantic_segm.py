@@ -47,8 +47,8 @@ def FilterDataset(
         # リスト内の個々のクラスに対してイテレートする
         for className in cls_names:
             # 与えられたカテゴリを含むすべての画像を取得する
-            catIds = coco.getCatIds(catNms=className)
-            imgIds = coco.getImgIds(catIds=catIds)
+            catIds = coco.getCatIds(catNms=className)  # <- ann
+            imgIds = coco.getImgIds(catIds=catIds)  # <- ann
             images += coco.loadImgs(imgIds)
 
     else:
@@ -163,7 +163,7 @@ class SegmentationDataset(data.Dataset):
             raise FileExistsError(
                 f"The dataset to be used for {cfg.task} could not be read. The path is invalid."
             )
-            
+
         # imgs_info = {
         # license: int,
         # file_name: str, 例: 000000495776.jpg
