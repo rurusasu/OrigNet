@@ -36,6 +36,8 @@ class ClassifyNetworkWrapper(nn.Module):
 
         loss = self.criterion(output, target)
 
+        # output の予測をラベル値に変換．
+        # 例: [[1.09e+01, -6.46e+0.1, ...][1.96e+01, -8.70e+01, ...]] -> [0, 0, ...]
         _, preds = torch.max(output, axis=1)
         acc = torch.sum(preds == target) / input.size()[0]
 
@@ -47,4 +49,4 @@ class ClassifyNetworkWrapper(nn.Module):
         del input, target, acc  # loss と iou 計算後 batch を削除してメモリを確保
         torch.cuda.empty_cache()
 
-        return output, loss, scalar_stats, image_stats
+        return preds, loss, scalar_stats, image_stats

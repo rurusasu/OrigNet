@@ -17,18 +17,18 @@ import timm
 # REF:https://dajiro.com/entry/2020/07/24/161040
 
 
-def EfficientNet_b0(pretrained: bool = False, **kwargs):
+def InceptionV3(pretrained: bool = False, **kwargs):
     # モデルの定義
-    model = timm.create_model("efficientnet_b0", pretrained=pretrained, **kwargs)
+    model = timm.create_model("inception_v3", pretrained=pretrained, **kwargs)
     return model
 
 
-EfficientNet_spec = {"b0": EfficientNet_b0}
+Inception_spec = {"v3": InceptionV3}
 
 
-def get_efficient_net(
-    model_num: Literal["b0", "b2"], pretrained: bool = False, **kwargs
+def get_inception_net(
+    model_num: Literal["v3", "v4"], pretrained: bool = False, **kwargs
 ):
-    model = EfficientNet_spec[model_num](pretrained, **kwargs)
+    model = Inception_spec[model_num](pretrained, **kwargs)
 
     return model

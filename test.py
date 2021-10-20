@@ -20,12 +20,15 @@ def test(cfg: CfgNode):
     val_loader = make_data_loader(cfg, is_train=False)
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
-    # 理由は，画素値が 0 のラベルを与える必要があるため．
-    cfg.num_classes = len(val_loader.dataset.cls_names) + 1
+    if cfg.task == "classify":
+        cfg.num_classes = len(val_loader.dataset.cls_names)
+    elif cfg.task == "semantic_segm":
+        # 理由は，画素値が 0 のラベルを与える必要があるため．
+        cfg.num_classes = len(val_loader.dataset.cls_names) + 1
     network = make_network(cfg)
 
     trainer = make_trainer(cfg, network, device_name="auto")
-    evaluator = make_evaluator(cfg)
+    evaluator = make_evaluator(cfg, cls_names=val_loader.dataset.cls_names)
     epoch = load_network(network, cfg.model_dir)
     trainer.val(epoch, val_loader, evaluator)
 
@@ -50,6 +53,32 @@ if __name__ == "__main__":
     else:
         print("テストをデバッグモードで実行します．")
 
+        conf = CfgNode()
+        conf.task = "classify"
+        conf.network = "cnns"
+        conf.model = "res_18"
+        conf.model_dir = "model"
+        conf.train_type = "transfer"  # or scratch
+        conf.img_width = 224
+        conf.img_height = 224
+        conf.resume = True  # 追加学習するか
+        conf.use_amp = False  # 半精度で訓練するか
+        conf.record_dir = "record"
+        conf.ep_iter = -1
+        conf.skip_eval = False
+        conf.train = CfgNode()
+        conf.train.dataset = "AngleDetectTrain_2"
+        conf.train.criterion = ""
+        conf.test = CfgNode()
+        # conf.test.dataset = "SampleTest"
+        # conf.test.dataset = "BrakeRotorsTest"
+        conf.test.dataset = "AngleDetectTest"
+        conf.test.batch_size = 20
+        conf.test.num_workers = 4
+        # conf.test.batch_sampler = "image_size"
+        conf.test.batch_sampler = ""
+
+        """
         conf = CfgNode()
         conf.cls_names = ["laptop", "tv"]
         conf.task = "semantic_segm"
@@ -78,6 +107,7 @@ if __name__ == "__main__":
         conf.test.num_workers = 4
         # conf.test.batch_sampler = "image_size"
         conf.test.batch_sampler = ""
+        """
 
         # データの保存先を設定
         conf.model_dir = os.path.join(

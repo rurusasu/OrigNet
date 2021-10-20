@@ -107,7 +107,7 @@ class ClassifyDataset(data.Dataset):
             "img": img,
             "target": torch.tensor(self.targets[img_id]),
             "meta": self.split,
-            "cls_names": self.cls_names[self.targets[img_id]],
+            "cls_name": self.cls_names[self.targets[img_id]],
         }
         return ret
 

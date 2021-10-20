@@ -1,4 +1,5 @@
 import sys
+from typing import List
 
 sys.path.append("../../")
 sys.path.append("../../../")
@@ -15,7 +16,7 @@ _evaluator_factory = {
 }
 
 
-def make_evaluator(cfg: CfgNode) -> object:
+def make_evaluator(cfg: CfgNode, cls_names: List) -> object:
     """ネットワークの精度の検証を行うクラスを読みだす関数
 
     Args:
@@ -29,5 +30,5 @@ def make_evaluator(cfg: CfgNode) -> object:
     else:
         task = cfg.task
         eval_class = _evaluator_factory[task]
-        eval_class = eval_class(cfg.result_dir)
+        eval_class = eval_class(cfg.result_dir, cls_names)
         return eval_class
