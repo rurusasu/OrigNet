@@ -7,7 +7,7 @@ sys.path.append("../../../")
 import torch
 from yacs.config import CfgNode
 
-from lib.config.config import pth
+from lib.config.config import pth, cfg
 from lib.datasets.make_datasets import make_data_loader
 from lib.evaluators.make_evaluator import make_evaluator
 from lib.models.make_network import make_network
@@ -35,44 +35,74 @@ def main(cfg):
 
 
 if __name__ == "__main__":
-    cfg = CfgNode()
-    cfg.cls_names = ["laptop", "tv"]
-    cfg.task = "semantic_segm"
-    cfg.network = "smp"
-    cfg.model = "unetpp"
-    cfg.encoder_name = "resnet18"
-    cfg.model_dir = "model"
-    cfg.train_type = "transfer"  # or scratch
-    # cfg.train_type = "scratch"
-    cfg.img_width = 224
-    cfg.img_height = 224
-    cfg.resume = True  # 追加学習するか
-    cfg.record_dir = "record"
-    cfg.ep_iter = -1
-    cfg.skip_eval = False
-    cfg.train = CfgNode()
-    cfg.train.dataset = "COCO2017Val"
-    cfg.train.criterion = ""
-    cfg.train.metrics = "iou"
-    cfg.use_amp = False
-    cfg.test = CfgNode()
-    # cfg.test.dataset = "SampleTest"
-    # cfg.test.dataset = "BrakeRotorsTest"
-    cfg.test.dataset = "COCO2017Val"
-    cfg.test.batch_size = 20
-    cfg.test.num_workers = 4
-    # cfg.test.batch_sampler = "image_size"
-    cfg.test.batch_sampler = ""
+    import traceback
 
-    # データの保存先を設定
-    cfg.model_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir
-    )
-    cfg.record_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.test.dataset, cfg.model, cfg.record_dir
-    )
-    cfg.result_dir = os.path.join(
-        pth.DATA_DIR, "trained", cfg.task, cfg.test.dataset, cfg.model, "result"
-    )
+    debug = True
+    torch.cuda.empty_cache()
+    if not debug:
+        try:
+            main(cfg)
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            torch.cuda.empty_cache()
 
-    main(cfg)
+    else:
+        print("テストをデバッグモードで実行します．")
+
+        conf = CfgNode()
+        conf.cls_names = ["laptop", "tv"]
+        conf.task = "semantic_segm"
+        conf.network = "smp"
+        conf.model = "unetpp"
+        conf.encoder_name = "resnet18"
+        conf.model_dir = "model"
+        conf.train_type = "transfer"  # or scratch
+        # conf.train_type = "scratch"
+        conf.img_width = 224
+        conf.img_height = 224
+        conf.resume = True  # 追加学習するか
+        conf.record_dir = "record"
+        conf.ep_iter = -1
+        conf.skip_eval = False
+        conf.train = CfgNode()
+        conf.train.dataset = "COCO2017Val"
+        conf.train.criterion = ""
+        conf.train.metrics = "iou"
+        conf.use_amp = False
+        conf.test = CfgNode()
+        # conf.test.dataset = "SampleTest"
+        # conf.test.dataset = "BrakeRotorsTest"
+        conf.test.dataset = "COCO2017Val"
+        conf.test.batch_size = 20
+        conf.test.num_workers = 4
+        # conf.test.batch_sampler = "image_size"
+        conf.test.batch_sampler = ""
+
+        # データの保存先を設定
+        conf.model_dir = os.path.join(
+            pth.DATA_DIR,
+            "trained",
+            conf.task,
+            conf.train.dataset,
+            conf.model,
+            conf.model_dir,
+        )
+        conf.record_dir = os.path.join(
+            pth.DATA_DIR,
+            "trained",
+            conf.task,
+            conf.test.dataset,
+            conf.model,
+            conf.record_dir,
+        )
+        conf.result_dir = os.path.join(
+            pth.DATA_DIR, "trained", conf.task, conf.test.dataset, conf.model, "result"
+        )
+
+        try:
+            main(conf)
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            torch.cuda.empty_cache()

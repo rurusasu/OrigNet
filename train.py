@@ -95,14 +95,21 @@ def main(cfg):
 
 
 if __name__ == "__main__":
-    # テスト
     import traceback
 
     debug = True
+    torch.cuda.empty_cache()
 
-    if debug:
+    if not debug:
+        try:
+            main(cfg)
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            torch.cuda.empty_cache()
+
+    else:
         print("訓練をデバッグモードで実行します．")
-
         from yacs.config import CfgNode as CN
 
         conf = CN()
@@ -198,15 +205,6 @@ if __name__ == "__main__":
         torch.cuda.empty_cache()
         try:
             main(conf)
-        except:
-            traceback.print_exc()
-        finally:
-            torch.cuda.empty_cache()
-
-    else:
-        torch.cuda.empty_cache()
-        try:
-            main(cfg)
         except:
             traceback.print_exc()
         finally:
