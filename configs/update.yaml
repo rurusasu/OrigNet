@@ -4,6 +4,8 @@
 - loop: 1
   network: "cnns"
   model: "inc_v3"
+  img_width: 299
+  img_height: 299
   train:
     dataset: "AngleDetectTrain_2"
     batch_sampler: ""
@@ -13,3 +15,5 @@
 - loop: 2
   network: "cnns"
   model: "res_18"
+  img_width: 224
+  img_height: 224
