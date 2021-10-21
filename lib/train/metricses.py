@@ -1,10 +1,8 @@
 import sys
-from typing import Any
 
 sys.path.append("../../")
 sys.path.append("../../../")
 
-import torch
 from yacs.config import CfgNode
 
 from lib.utils.metrics.iou import iou_score, dice_coef

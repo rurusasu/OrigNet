@@ -4,8 +4,6 @@ import sys
 from glob import glob
 from typing import Dict, List, Literal
 
-from torch.utils import data
-
 sys.path.append("../../")
 
 import cv2
@@ -16,7 +14,7 @@ import skimage.io as io
 from tqdm.contrib import tenumerate
 
 from lib.visualizers.segmentation import visualize_np
-from lib.utils.base_utils import LoadNdjson, WriteDataToNdjson
+from lib.utils.base_utils import WriteDataToNdjson
 
 # --------------------------------------------- #
 # Amazon Robotic Challenge 2017 Dataset #
@@ -157,9 +155,10 @@ class ARCDatasetTransformer(object):
                 if os.path.isfile(seg_pth) and os.path.splitext(seg_pth)[1] in file_ext:
                     seg_img = io.imread(seg_pth)
                     # pixcel 座標: ndarray[0, 1, ...][0, 1, ...] -> (0, 0), (1, 1), ..
-                    pix_x, pix_y = np.where(seg_img > 0)  # 画素値 > 0 の位置を取得．
+                    # pix_x, pix_y = np.where(seg_img > 0)  # 画素値 > 0 の位置を取得．
                     # 画素値の値を label に変換
-                    pv = seg_img[pix_x[0]][pix_y[0]]  # 1つの画素値を取得
+                    # pv = seg_img[pix_x[0]][pix_y[0]]  # 1つの画素値を取得
+                    pv = seg_img.max()
                     category_id = [
                         v[0]
                         for _, v in PixelValueToLabel.items()
@@ -171,20 +170,16 @@ class ARCDatasetTransformer(object):
                         id += 1
                         # 画像情報 & アノテーション情報
                         source = {
-                            "img_info": {
-                                "image_id": img_id,
-                                "id": id,
-                                "imgs": {"file_name": str(img_id) + ".png", "id": id},
-                            },
-                            "anns": {
-                                "category_id": category_id.max().tolist(),
-                                "segmentation": [pix_x.tolist(), pix_y.tolist()],
-                            },
+                            "image_id": img_id,
+                            "id": id,
+                            "img_file_name": str(img_id) + ".png",
+                            "category_id": category_id.max().tolist(),
+                            "anno_file_name": seg_pth.replace(self.ds_pth + os.sep, ""),
                         }
 
                         WriteDataToNdjson(source, wt_json_pth)
                         # 不要な変数を削除
-                        del seg_img, pix_x, pix_y, pv
+                        del seg_img, pv
 
     def _CreateContinuousLabelImage(
         self,
@@ -321,8 +316,6 @@ class ARCDataset(object):
             raise ValueError("`{}` is invalid.".format(self.f_json_pth))
         else:
             print("json ファイルを読みだします．")
-            # source = LoadNdjson(self.f_json_pth)
-            # result = []
 
             self.df = pd.read_json(self.f_json_pth, orient="record", lines=True)
             self.df = pd.json_normalize(self.df.to_dict("records"), sep="_")
@@ -349,15 +342,22 @@ class ARCDataset(object):
         Returns:
             List[int]: データ番号 (id) のリスト．例: [1, 2, 3, ]
         """
-        df = self.df.query(f"anns_category_id in {catIds}")
-        return df["img_info_id"].tolist()
+        df = self.df.query(f"category_id in {catIds}")
+        return df["id"].tolist()
 
-    def loadImgs(self, imgIds: List[int]):
+    def loadImgs(self, imgIds: List[int]) -> Dict:
         """
 
         Args:
             imgIds (List[int]): [description]
         """
+        df = self.df.query(f"id in {imgIds}")
+
+        df = df[["img_file_name", "id"]]
+        # DataFrame -> Dict
+        # REF: https://note.nkmk.me/python-pandas-to-dict/
+        df = df.to_dict(orient="records")
+        return df
 
     def get_df(self):
         return self.df
@@ -399,3 +399,6 @@ if __name__ == "__main__":
 
     imgIds = dataset.getImgIds(catIds)
     print(imgIds)
+
+    img_info = dataset.loadImgs(imgIds)
+    print(img_info)
