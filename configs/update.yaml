@@ -1,0 +1,15 @@
+# コンフィグ情報の記述方法については以下を参考．
+# REF: https://qiita.com/Yama-to/items/587544993fb62610528a
+
+- loop: 1
+  network: "cnns"
+  model: "inc_v3"
+  train:
+    dataset: "AngleDetectTrain_2"
+    batch_sampler: ""
+  test:
+    dataset: "AngleDetectVal_2"
+    batch_sampler: ""
+- loop: 2
+  network: "cnns"
+  model: "res_18"

@@ -41,7 +41,7 @@ class ClassifyNetworkWrapper(nn.Module):
         _, preds = torch.max(output, axis=1)
         acc = torch.sum(preds == target) / input.size()[0]
 
-        image_stats.update({"input": input.detach().clone().cpu()})
+        # image_stats.update({"input": input.detach().clone().cpu()})
         scalar_stats.update(
             {"batch_loss": loss.detach().clone(), "batch_acc": acc.detach().clone()}
         )

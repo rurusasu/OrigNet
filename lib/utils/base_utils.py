@@ -24,6 +24,21 @@ file_ext = {
 }
 
 
+def DirCheckAndMake(dir_pth: str) -> str:
+    """
+    dir_pth の先のディレクトリが存在するかを判定し，存在しなければ作成する関数．
+
+    Arg:
+        dir_pth (str): ディレクトリのパス．
+
+    Return:
+        dir_pth (str): ディレクトリのパス．
+    """
+    if not os.path.exists(dir_pth):
+        os.makedirs(dir_pth)
+    return dir_pth
+
+
 def SelectDevice(max_gpu_num: int = 0):
     """
     CUDA GPU が使用できるかを判定し，使用できればその個数を取得，できなければ cpu を選択する関数．

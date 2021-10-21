@@ -111,7 +111,7 @@ class Trainer(object):
                 recorder.update_loss_stats(loss_stats)
                 pbar.update()
 
-                if iteration % 3 == 0 or iteration == (max_iter - 1):
+                if iteration % 10 == 0 or iteration == (max_iter - 1):
                     # print training state
                     # eta_seconds = recorder.batch_time.global_avg * (
                     #    max_iter - iteration
@@ -131,7 +131,8 @@ class Trainer(object):
                     print(training_state)
 
                     # record loss_stats and image_dict
-                    recorder.update_image_stats(image_stats)
+                    if image_stats:
+                        recorder.update_image_stats(image_stats)
 
                     recorder.record("train")
 
