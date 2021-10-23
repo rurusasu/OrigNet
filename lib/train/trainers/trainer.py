@@ -88,7 +88,6 @@ class Trainer(object):
                     _, loss, loss_stats, image_stats = self.network(input, target)
 
                     loss = loss / self.batch_multiplier
-                    print(loss)
                     """
                     if loss.ndim != 0:  # 損失の平均値を計算
                         loss = loss.mean()

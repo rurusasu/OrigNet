@@ -151,6 +151,25 @@ class SegmentationDataset(data.Dataset):
         mask_type: Literal["binary", "normal"] = "normal",
         transforms: Union[transforms.Compose, None] = None,
     ):
+        """セマンティックセグメンテーションのタスクで使用するデータセットを読みだすクラスの初期化関数．
+
+        Args:
+            cfg (CfgNode): 訓練の条件設定が保存された辞書．
+            data_root (str): 親ディレクトリのパス．
+            cls_names (Union[List[str], None], optional): 読みだしたいクラス名のリスト.
+            `None` の場合，すべてのクラスを読みだす．Defaults to None.
+            split (Literal[, optional): どのデータセットを読みだすか.
+            ["train", "val", "test"] の3つから選択可能．Defaults to "train".
+            mask_type (Literal[, optional):
+            "binary": すべてのオブジェクトを単一のクラスとしてマスクする．
+            "normal": オブジェクトをクラスごとにマスクする
+            Defaults to "normal".
+            transforms (Union[transforms.Compose, None], optional): データ拡張で使用するクラス．
+            Noneの場合は，データ拡張を行わない．Defaults to None.
+
+        Raises:
+            FileExistsError: [description]
+        """
         self.cfg = cfg
         self.data_root = os.path.join(pth.DATA_DIR, data_root)
         self.cls_names = cfg.cls_names

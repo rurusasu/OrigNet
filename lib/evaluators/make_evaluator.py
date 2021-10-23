@@ -16,11 +16,13 @@ _evaluator_factory = {
 }
 
 
-def make_evaluator(cfg: CfgNode, cls_names: List) -> object:
-    """ネットワークの精度の検証を行うクラスを読みだす関数
+def make_evaluator(cfg: CfgNode, cls_names: List[str]) -> object:
+    """
+    ネットワークの精度の検証を行うクラスを読みだす関数
 
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
+        cls_names(List[str]): 評価したいクラス名のリスト．
 
     Returns:
         object: ネットワークの精度の検証を行うクラス

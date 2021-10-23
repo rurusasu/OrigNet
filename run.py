@@ -58,7 +58,7 @@ def _CfgSave(cfg: CfgNode, save_dir: str) -> Any:
         save_dir (str): CfgNode を保存するための yaml ファイルのパス．
     """
     dic = {}
-    w_pth = os.path.join(save_dir, f"{cfg.task}_{cfg.moodel}.yaml")
+    w_pth = os.path.join(save_dir, f"{cfg.task}_{cfg.model}.yaml")
     # CfgNode -> Dict
     # この変換をしない場合，不要な変数が YAML に保存される．
     for k, v in cfg.items():

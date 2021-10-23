@@ -74,6 +74,8 @@ cfg.ep_iter = -1
 # 何 epoch で保存するか
 cfg.save_ep = 5
 cfg.eval_ep = 1
+# evaluator をスキップするか
+cfg.skip_eval = False
 # gpus
 cfg.gpus = [0, 1, 2, 3]
 # use amp
@@ -83,7 +85,6 @@ cfg.use_amp = True
 # train
 # ---------------------
 cfg.train = CN()
-
 # dataset
 cfg.train.dataset = ""
 cfg.train.epoch = 140
@@ -101,6 +102,17 @@ cfg.train.warp_iter = 5
 cfg.train.gamma = 0.5
 cfg.train.metrics = "iou"
 
+# ---------------------
+# val
+# ---------------------
+cfg.val = CN()
+cfg.val.dataset = "SampleTest"
+cfg.val.batch_size = 20
+cfg.val.num_workers = 2
+cfg.val.batch_sampler = ""
+# ---------------------
+# test
+# ---------------------
 cfg.test = CN()
 cfg.test.dataset = ""
 cfg.test.batch_size = 20

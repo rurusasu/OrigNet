@@ -13,8 +13,8 @@ save_ep: 5
 eval_ep: 1
 
 train:
-  epoch: 30
-  dataset: "AngleDetectTrain_2"
+  epoch: 1
+  dataset: "SampleTrain"
   batch_size: 24
   num_workers: 2
   batch_sampler: ""
@@ -27,12 +27,12 @@ train:
   warp_iter: 10  # 何 epoch ごとに lr を調整するか
   gamma: 0.5
 val:
-  dataset: "AngleDetectTrain_2"
+  dataset: "SampleTest"
   batch_size: 24
   num_workers: 2
   batch_sampler: ""
 test:
-  dataset: "AngleDetectVal_2"
+  dataset: "SampleTest"
   batch_size: 24
   num_workers: 2
   batch_sampler: ""

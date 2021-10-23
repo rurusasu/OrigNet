@@ -9,6 +9,9 @@
   train:
     dataset: "AngleDetectTrain_2"
     batch_sampler: ""
+  val:
+    dataset: "AngleDetectTrain_2"
+    batch_sampler: ""
   test:
     dataset: "AngleDetectVal_2"
     batch_sampler: ""

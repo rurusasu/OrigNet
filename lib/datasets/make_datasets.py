@@ -24,16 +24,14 @@ def make_dataset(
     cfg: CfgNode,
     dataset_name: str,
     transforms: Type[Union[None, TensorType]] = None,
-    is_train: bool = True,
 ):
     """
     `DatasetCatalog` から `dataset_name` を参照し，そこに保存されている情報をもとにデータセットを作成する関数
 
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
-        dataset_name (str): ロードするデータセット名
+        dataset_name (str): ロードするデータセット名．
         transforms (torchvision.transforms): データ拡張に使用するtorchvisionのクラス．default to None.
-        is_train (bool): 訓練用データセットか否か．default to True.
     """
     args = DatasetCatalog.get(dataset_name)
     dataset = _dataset_factory[cfg.task]
@@ -43,7 +41,7 @@ def make_dataset(
     # args["data_root"] = os.path.join(pth.DATA_DIR, args["data_root"])
     if transforms is not None:
         args["transforms"] = transforms
-    # args["split"] = "train" if is_train else "test"
+
     dataset = dataset(**args)
 
     return dataset
@@ -106,7 +104,8 @@ def _worker_init_fn(worker_id):
 
 def make_data_loader(
     cfg: CfgNode,
-    is_train: bool = True,
+    split: Literal["train", "val", "test"] = "train",
+    # is_train: bool = True,
     is_distributed: bool = False,
     max_iter: int = -1,
 ):
@@ -119,7 +118,10 @@ def make_data_loader(
         is_distributed (bool): データをシャッフルしたものをテストに使用するか．Defaults to False.
         max_iter (int): イテレーションの最大値．Defaults to -1.
     """
-    if is_train:
+    # --------------------------------------- #
+    # 訓練データセットの場合のコンフィグ #
+    # --------------------------------------- #
+    if split == "train":
         if (
             "train" not in cfg
             and "dataset" not in cfg.train
@@ -128,32 +130,60 @@ def make_data_loader(
             and "batch_sampler" not in cfg.train
         ):
             raise ("The required parameter for 'make_data_loader' has not been set.")
-        batch_size = cfg.train.batch_size
-        shuffle = True
+        # split = "train"
         drop_last = False
+        shuffle = True
+        dataset_name = cfg.train.dataset
+        batch_size = cfg.train.batch_size
         num_workers = cfg.train.num_workers
         batch_sampler = cfg.train.batch_sampler
-    else:
+    # --------------------------------------- #
+    # 検証データセットの場合のコンフィグ #
+    # --------------------------------------- #
+    elif split == "val":
         if (
-            "test" not in cfg
-            and "dataset" not in cfg.test
+            "dataset" not in cfg.val
+            and "batch_size" not in cfg.val
+            and "num_workers" not in cfg.val
+            and "batch_sampler" not in cfg.val
+        ):
+            raise (
+                "Required parameter included in `val` of `make_data_loader` is not set."
+            )
+        # split = "val"
+        drop_last = False
+        dataset_name = cfg.val.dataset
+        batch_size = cfg.val.batch_size
+        num_workers = cfg.val.num_workers
+        batch_sampler = cfg.val.batch_sampler
+        shuffle = True if is_distributed else False
+    # ----------------------------------------- #
+    # テストデータセットの場合のコンフィグ #
+    # ----------------------------------------- #
+    elif split == "test":
+        if (
+            "dataset" not in cfg.test
             and "batch_size" not in cfg.test
             and "num_workers" not in cfg.test
             and "batch_sampler" not in cfg.test
         ):
-            raise ("The required parameter for `make_data_loader` has not been set.")
-        batch_size = cfg.test.batch_size
-        shuffle = True if is_distributed else False
+            raise (
+                "Required parameter included in `test` of `make_data_loader` is not set."
+            )
+        # split = "test"
         drop_last = False
+        dataset_name = cfg.test.dataset
+        batch_size = cfg.test.batch_size
         num_workers = cfg.test.num_workers
         batch_sampler = cfg.test.batch_sampler
+        shuffle = True if is_distributed else False
+    else:
+        raise ("The required parameter for `make_data_loader` has not been set.")
 
-    dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
+    # dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
 
-    transforms = make_transforms(cfg, is_train)
-    dataset = make_dataset(
-        cfg, dataset_name=dataset_name, transforms=transforms, is_train=is_train
-    )
+    transforms = make_transforms(cfg, split)
+    dataset = make_dataset(cfg, dataset_name=dataset_name, transforms=transforms)
     sampler = _make_data_sampler(dataset, shuffle)
     batch_sampler = _make_batch_data_sampler(
         sampler, batch_size, drop_last, max_iter, batch_sampler

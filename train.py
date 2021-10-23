@@ -33,8 +33,8 @@ def train(cfg: CfgNode) -> None:
     torch.backends.cudnn.deterministic = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
-    train_loader = make_data_loader(cfg, is_train=True, max_iter=cfg.ep_iter)
-    val_loader = make_data_loader(cfg, is_train=False)
+    train_loader = make_data_loader(cfg, split="train", max_iter=cfg.ep_iter)
+    val_loader = make_data_loader(cfg, split="val")
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":
@@ -129,8 +129,8 @@ if __name__ == "__main__":
         conf.eval_ep = 1
         conf.train = CN()
         conf.train.epoch = 15
-        # conf.train.dataset = "SampleTrain"
-        conf.train.dataset = "AngleDetectTrain_2"
+        conf.train.dataset = "SampleTrain"
+        # conf.train.dataset = "AngleDetectTrain_2"
         conf.train.batch_size = 20
         conf.train.num_workers = 2
         conf.train.batch_sampler = ""
@@ -142,8 +142,14 @@ if __name__ == "__main__":
         conf.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
         conf.train.warp_iter = 10
         conf.train.gamma = 0.5
+        conf.val = CN()
+        conf.val.dataset = "SampleTest"
+        conf.val.batch_size = 20
+        conf.val.num_workers = 2
+        conf.val.batch_sampler = ""
         conf.test = CN()
-        conf.test.dataset = "AngleDetectVal_2"
+        # conf.test.dataset = "AngleDetectVal_2"
+        conf.test.dataset = "SampleTest"
         conf.test.batch_size = 20
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""

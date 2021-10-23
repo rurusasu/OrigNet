@@ -17,7 +17,7 @@ from lib.utils.net_utils import load_network
 
 def test(cfg: CfgNode):
     # 検証用のデータローダーを作成
-    val_loader = make_data_loader(cfg, is_train=False)
+    val_loader = make_data_loader(cfg, split="test")
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":
@@ -65,14 +65,15 @@ if __name__ == "__main__":
         conf.use_amp = False  # 半精度で訓練するか
         conf.record_dir = "record"
         conf.ep_iter = -1
-        conf.skip_eval = False
+        # conf.skip_eval = False
         conf.train = CfgNode()
-        conf.train.dataset = "AngleDetectTrain_2"
+        conf.train.dataset = "SampleTrain"
+        # conf.train.dataset = "AngleDetectTrain_2"
         conf.train.criterion = ""
         conf.test = CfgNode()
-        # conf.test.dataset = "SampleTest"
+        conf.test.dataset = "SampleTest"
         # conf.test.dataset = "BrakeRotorsTest"
-        conf.test.dataset = "AngleDetectTest"
+        # conf.test.dataset = "AngleDetectTest"
         conf.test.batch_size = 20
         conf.test.num_workers = 4
         # conf.test.batch_sampler = "image_size"
