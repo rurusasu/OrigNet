@@ -20,7 +20,7 @@ from lib.utils.base_utils import DirCheckAndMake
 # args = parser.parse_args()
 
 
-def OneTrain(cfg: CfgNode, root_dir: str):
+def OneTrain(config: CfgNode, root_dir: str):
     """
     1回，train.py と test.py を実行する関数．
     訓練情報を保存するディレクトリは，
@@ -31,77 +31,71 @@ def OneTrain(cfg: CfgNode, root_dir: str):
         |---- result
 
     Args:
-        cfg (CfgNode): 訓練の条件設定が保存された辞書．
+        config (CfgNode): 訓練の条件設定が保存された辞書．
         root_dir (str): 親ディレクトリのパス．
     """
-    train_dir = _OneTrainDir(cfg, root_dir)
-    [mdl_dir, rec_dir, res_dir] = _OneTrainLogDir(cfg, train_dir)
+    train_dir = _OneTrainDir(config, root_dir)
+    [mdl_dir, rec_dir, res_dir] = _OneTrainLogDir(config, train_dir)
 
     # コンフィグの更新
-    cfg.model_dir = mdl_dir
-    cfg.record_dir = rec_dir
-    cfg.result_dir = res_dir
+    config.model_dir = mdl_dir
+    config.record_dir = rec_dir
+    config.result_dir = res_dir
 
     # 訓練
-    train(cfg)
+    train(config)
     # テスト
-    test(cfg)
+    test(config)
     # Cfg 情報の保存
-    _CfgSave(cfg, train_dir)
+    _CfgSave(config, train_dir)
 
 
-def _CfgSave(cfg: CfgNode, save_dir: str) -> Any:
+def _CfgSave(config: CfgNode, save_dir: str) -> Any:
     """CfgNode を yaml ファイルとして保存するための関数．
 
     Args:
-        cfg (CfgNode): 訓練の条件設定が保存された辞書．
+        config (CfgNode): 訓練の条件設定が保存された辞書．
         save_dir (str): CfgNode を保存するための yaml ファイルのパス．
     """
     dic = {}
-    w_pth = os.path.join(save_dir, f"{cfg.task}_{cfg.model}.yaml")
+    w_pth = os.path.join(save_dir, f"{config.task}_{config.model}.yaml")
     # CfgNode -> Dict
     # この変換をしない場合，不要な変数が YAML に保存される．
-    for k, v in cfg.items():
+    for k, v in config.items():
         dic[k] = v
 
     with open(w_pth, "w") as yf:
         yaml.dump(dic, yf, default_flow_style=False)
 
 
-def _OneTrainLogDir(cfg: CfgNode, root_dir: str = ".") -> List[str]:
+def _OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
     """
     1回の訓練と検証時のデータを保存する`model`，`record`，`result` ディレクトリを作成するための関数．
 
     Args:
-        cfg (CfgNode): 訓練の条件設定が保存された辞書．
+        config (CfgNode): 訓練の条件設定が保存された辞書．
         root_dir (str): 親ディレクトリのパス．
     """
-    # もしモデル保存用ディレクトリが設定されていなかった場合．
-    if "model_dir" not in cfg:
-        cfg.model_dir = "model"
-    if "record_dir" not in cfg:
-        cfg.record_dir = "record"
-    if "result_dir" not in cfg:
-        cfg.result_dir = "result"
 
-    model_dir = DirCheckAndMake(os.path.join(root_dir, cfg.model_dir))
-    record_dir = DirCheckAndMake(os.path.join(root_dir, cfg.record_dir))
-    result_dir = DirCheckAndMake(os.path.join(root_dir, cfg.result_dir))
+    model_dir = DirCheckAndMake(os.path.join(root_dir, config.model_dir))
+    record_dir = DirCheckAndMake(os.path.join(root_dir, config.record_dir))
+    result_dir = DirCheckAndMake(os.path.join(root_dir, config.result_dir))
 
     return [model_dir, record_dir, result_dir]
 
 
-def _OneTrainDir(cfg: CfgNode, root_dir: str = ".") -> str:
+def _OneTrainDir(config: CfgNode, root_dir: str = ".") -> str:
     """
     1回の訓練の全データを保存するディレクトリを作成する関数．
     ディレクトリ名は，cfg.task で与えられる．
 
     Args:
+        config (CfgNode): 訓練の条件設定が保存された辞書．
         root_dir (str): 親ディレクトリのパス．
     """
-    if "task" not in cfg:
+    if "task" not in config:
         raise ("The task is not set.")
-    dir_pth = os.path.join(root_dir, cfg.task)
+    dir_pth = os.path.join(root_dir, config.task)
     dir_pth = DirCheckAndMake(dir_pth)
     return dir_pth
 
@@ -122,12 +116,23 @@ def _make_learning_dir(dir_name: str = "trained") -> str:
 
 
 class CycleTrain(object):
-    def __init__(self, cfg) -> None:
+    def __init__(self, config) -> None:
         super(CycleTrain, self).__init__()
         # self.args = args
         self.up_file = os.path.join(pth.CONFIGS_DIR, "update.yaml")
-        self.cfg = cfg
+        self.config = config
         self.root_dir = _make_learning_dir()
+        # もしモデル保存用ディレクトリが設定されていなかった場合．
+        if "model_dir" not in self.config:
+            self.config.model_dir = "model"
+        if "record_dir" not in self.config:
+            self.config.record_dir = "record"
+        if "result_dir" not in self.config:
+            self.config.result_dir = "result"
+
+        self.model_dir = self.config.model_dir
+        self.record_dir = self.config.record_dir
+        self.result_dir = self.config.result_dir
 
     def UpdataCfg(self, iter_num: int = 1) -> bool:
         """
@@ -161,9 +166,9 @@ class CycleTrain(object):
                             # if type(v) == "dict":
                             if isinstance(v, dict):
                                 for v_key, v_value in v.items():
-                                    self.cfg[k][v_key] = v_value
+                                    self.config[k][v_key] = v_value
                             else:
-                                self.cfg.merge_from_list([k, v])
+                                self.config.merge_from_list([k, v])
                         hook = True
                 else:
                     pass
@@ -174,7 +179,7 @@ class CycleTrain(object):
         # update用のコンフィグが指定されなかった場合．
         if not self.up_file:
             print(f"{self.args.cfg_file} に設定された情報を用いて訓練・検証を実行します．")
-            OneTrain(self.cfg, root_dir=self.root_dir)
+            OneTrain(self.config, root_dir=self.root_dir)
 
         # update用のコンフィグ情報が指定された場合．
         else:
@@ -191,11 +196,18 @@ class CycleTrain(object):
                 hock = False
                 while True:
                     print(f"{iter_num} 番目の学習を実行します。")
+                    # イテレーションごとのルートディレクトリの作成
                     dir = DirCheckAndMake(os.path.join(self.root_dir, str(iter_num)))
-                    OneTrain(self.cfg, root_dir=dir)
+                    OneTrain(self.config, root_dir=dir)
                     hock = self.UpdataCfg(iter_num)
                     if hock:
+                        # イテレーション数の更新
                         iter_num += 1
+                        # 保存用の子ディレクトリの再設定
+                        # これをしないと，パスが深くなり続けてしまう。
+                        self.config.model_dir = self.model_dir
+                        self.config.record_dir = self.record_dir
+                        self.config.result_dir = self.result_dir
                     else:
                         break
 
@@ -206,7 +218,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
     if not debug:
         CycleTrain(cfg).main()
     else:

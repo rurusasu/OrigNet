@@ -13,7 +13,7 @@ save_ep: 5
 eval_ep: 1
 
 train:
-  epoch: 1
+  epoch: 30
   dataset: "SampleTrain"
   batch_size: 24
   num_workers: 2

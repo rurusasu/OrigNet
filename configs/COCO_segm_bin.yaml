@@ -29,7 +29,11 @@ train:
   warp_iter: 50
   gamma: 0.5
   metrics: "iou"
-
+val:
+  dataset: "COCO2017Val"
+  batch_size: 20
+  num_workers: 2
+  batch_sampler: ""
 test:
   dataset: "COCO2017Val"
   batch_size: 20
