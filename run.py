@@ -140,6 +140,8 @@ class CycleTrain(object):
         # サイクルが最後まで行った or up_file not found: False
         # それ以外の場合: True
         hook = False
+        # アップデート前にコンフィグ情報をコピー
+
         yml_pth = self.up_file
         with open(yml_pth, "r") as yml:
             # YAML ファイルからコンフィグ情報を読みだす．
@@ -155,8 +157,14 @@ class CycleTrain(object):
                             pass
                         # 訓練情報をアップデートする．
                         else:
-                            self.cfg.merge_from_list([k, v])
-                            hook = True
+                            # v が辞書型の場合
+                            # if type(v) == "dict":
+                            if isinstance(v, dict):
+                                for v_key, v_value in v.items():
+                                    self.cfg[k][v_key] = v_value
+                            else:
+                                self.cfg.merge_from_list([k, v])
+                        hook = True
                 else:
                     pass
 
@@ -182,6 +190,7 @@ class CycleTrain(object):
                 # それ以外の場合: True
                 hock = False
                 while True:
+                    print(f"{iter_num} 番目の学習を実行します。")
                     dir = DirCheckAndMake(os.path.join(self.root_dir, str(iter_num)))
                     OneTrain(self.cfg, root_dir=dir)
                     hock = self.UpdataCfg(iter_num)
@@ -197,4 +206,53 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    CycleTrain(cfg).main()
+    debug = True
+    if not debug:
+        CycleTrain(cfg).main()
+    else:
+        from yacs.config import CfgNode as CN
+
+        conf = CN()
+        conf.task = "classify"
+        conf.network = "cnns"
+        conf.model = "inc_v3"
+        conf.model_dir = "model"
+        conf.train_type = "transfer"  # or scratch
+        # conf.train_type = "scratch"
+        conf.img_width = 224
+        conf.img_height = 224
+        conf.resume = True  # 追加学習するか
+        conf.use_amp = False  # 半精度で訓練するか
+        conf.record_dir = "record"
+        conf.ep_iter = -1
+        conf.save_ep = 5
+        conf.eval_ep = 1
+        conf.skip_eval = False
+        conf.train = CN()
+        conf.train.epoch = 1
+        conf.train.dataset = "SampleTrain"
+        # conf.train.dataset = "AngleDetectTrain_2"
+        conf.train.batch_size = 20
+        conf.train.num_workers = 2
+        conf.train.batch_sampler = ""
+        conf.train.optim = "adam"
+        conf.train.criterion = ""
+        conf.train.lr = 1e-3
+        conf.train.scheduler = "step_lr"
+        conf.train.weight_decay = 0.0
+        conf.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+        conf.train.warp_iter = 10
+        conf.train.gamma = 0.5
+        conf.val = CN()
+        conf.val.dataset = "SampleTest"
+        conf.val.batch_size = 20
+        conf.val.num_workers = 2
+        conf.val.batch_sampler = ""
+        conf.test = CN()
+        # conf.test.dataset = "AngleDetectVal_2"
+        conf.test.dataset = "SampleTest"
+        conf.test.batch_size = 20
+        conf.test.num_workers = 2
+        conf.test.batch_sampler = ""
+
+        CycleTrain(conf).main()
