@@ -166,10 +166,10 @@ class Trainer(object):
                         )
                     pbar.update()
 
-            loss_stats = self.reduce_loss_stats(loss_stats)
-            for k, v in loss_stats.items():
-                val_loss_stats.setdefault(k, 0)
-                val_loss_stats[k] += v
+                loss_stats = self.reduce_loss_stats(loss_stats)
+                for k, v in loss_stats.items():
+                    val_loss_stats.setdefault(k, 0)
+                    val_loss_stats[k] += v
 
         loss_state = []
         for k in val_loss_stats.keys():

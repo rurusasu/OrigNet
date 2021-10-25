@@ -97,7 +97,7 @@ def main(cfg):
 if __name__ == "__main__":
     import traceback
 
-    debug = False
+    debug = True
     torch.cuda.empty_cache()
 
     if not debug:
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         conf.save_ep = 5
         conf.eval_ep = 1
         conf.train = CN()
-        conf.train.epoch = 15
+        conf.train.epoch = 1
         conf.train.dataset = "SampleTrain"
         # conf.train.dataset = "AngleDetectTrain_2"
         conf.train.batch_size = 20
