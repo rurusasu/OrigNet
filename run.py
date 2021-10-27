@@ -1,8 +1,8 @@
-import argparse
 import os
 import sys
+
+import optuna
 import yaml
-from typing import Any, List
 
 sys.path.append(".")
 sys.path.append("..")
@@ -12,7 +12,7 @@ from yacs.config import CfgNode
 from train import train
 from test import test
 from lib.config.config import pth, cfg
-from lib.utils.base_utils import DirCheckAndMake
+from lib.utils.base_utils import CfgSave, DirCheckAndMake, OneTrainDir, OneTrainLogDir
 
 
 # parser = argparse.ArgumentParser()
@@ -34,8 +34,8 @@ def OneTrain(config: CfgNode, root_dir: str):
         config (CfgNode): 訓練の条件設定が保存された辞書．
         root_dir (str): 親ディレクトリのパス．
     """
-    train_dir = _OneTrainDir(config, root_dir)
-    [mdl_dir, rec_dir, res_dir] = _OneTrainLogDir(config, train_dir)
+    train_dir = OneTrainDir(config, root_dir)
+    [mdl_dir, rec_dir, res_dir] = OneTrainLogDir(config, train_dir)
 
     # コンフィグの更新
     config.model_dir = mdl_dir
@@ -45,62 +45,14 @@ def OneTrain(config: CfgNode, root_dir: str):
     # 訓練
     train(config)
     # テスト
-    test(config)
+    loss = test(config)
     # Cfg 情報の保存
-    _CfgSave(config, train_dir)
+    CfgSave(config, train_dir)
+
+    return loss
 
 
-def _CfgSave(config: CfgNode, save_dir: str) -> Any:
-    """CfgNode を yaml ファイルとして保存するための関数．
-
-    Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        save_dir (str): CfgNode を保存するための yaml ファイルのパス．
-    """
-    dic = {}
-    w_pth = os.path.join(save_dir, f"{config.task}_{config.model}.yaml")
-    # CfgNode -> Dict
-    # この変換をしない場合，不要な変数が YAML に保存される．
-    for k, v in config.items():
-        dic[k] = v
-
-    with open(w_pth, "w") as yf:
-        yaml.dump(dic, yf, default_flow_style=False)
-
-
-def _OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
-    """
-    1回の訓練と検証時のデータを保存する`model`，`record`，`result` ディレクトリを作成するための関数．
-
-    Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        root_dir (str): 親ディレクトリのパス．
-    """
-
-    model_dir = DirCheckAndMake(os.path.join(root_dir, config.model_dir))
-    record_dir = DirCheckAndMake(os.path.join(root_dir, config.record_dir))
-    result_dir = DirCheckAndMake(os.path.join(root_dir, config.result_dir))
-
-    return [model_dir, record_dir, result_dir]
-
-
-def _OneTrainDir(config: CfgNode, root_dir: str = ".") -> str:
-    """
-    1回の訓練の全データを保存するディレクトリを作成する関数．
-    ディレクトリ名は，cfg.task で与えられる．
-
-    Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        root_dir (str): 親ディレクトリのパス．
-    """
-    if "task" not in config:
-        raise ("The task is not set.")
-    dir_pth = os.path.join(root_dir, config.task)
-    dir_pth = DirCheckAndMake(dir_pth)
-    return dir_pth
-
-
-def _make_learning_dir(dir_name: str = "trained") -> str:
+def make_learning_dir(dir_name: str = "trained") -> str:
     """
     訓練と検証の全データを保存するディレクトリを作成する関数
 
@@ -121,7 +73,7 @@ class CycleTrain(object):
         # self.args = args
         self.up_file = os.path.join(pth.CONFIGS_DIR, "update.yaml")
         self.config = config
-        self.root_dir = _make_learning_dir()
+        self.root_dir = make_learning_dir()
         # もしモデル保存用ディレクトリが設定されていなかった場合．
         if "model_dir" not in self.config:
             self.config.model_dir = "model"
@@ -133,6 +85,8 @@ class CycleTrain(object):
         self.model_dir = self.config.model_dir
         self.record_dir = self.config.record_dir
         self.result_dir = self.config.result_dir
+
+        self.iter_num = 1
 
     def UpdataCfg(self, iter_num: int = 1) -> bool:
         """
@@ -189,20 +143,22 @@ class CycleTrain(object):
                 print("ファイルが見つかりました．")
                 print(f"{self.up_file} の情報を用いて連続訓練を開始します．")
 
-                iter_num = 1
+                self.iter_num = 1
                 # 追加の訓練サイクルが存在するか判定する変数
                 # サイクルが最後まで行った or up_file not found: False
                 # それ以外の場合: True
                 hock = False
                 while True:
-                    print(f"{iter_num} 番目の学習を実行します。")
+                    print(f"{self.iter_num} 番目の学習を実行します。")
                     # イテレーションごとのルートディレクトリの作成
-                    dir = DirCheckAndMake(os.path.join(self.root_dir, str(iter_num)))
+                    dir = DirCheckAndMake(
+                        os.path.join(self.root_dir, str(self.iter_num))
+                    )
                     OneTrain(self.config, root_dir=dir)
-                    hock = self.UpdataCfg(iter_num)
+                    hock = self.UpdataCfg(self.iter_num)
                     if hock:
                         # イテレーション数の更新
-                        iter_num += 1
+                        self.iter_num += 1
                         # 保存用の子ディレクトリの再設定
                         # これをしないと，パスが深くなり続けてしまう。
                         self.config.model_dir = self.model_dir
@@ -216,9 +172,28 @@ class CycleTrain(object):
                 print("ファイルが見つかりました．")
                 print("連続訓練を停止します．")
 
+    def OptunaTrain(self):
+        # パラメタ探索のため，追加学習を無効にする．
+        self.config.resume = False
+        study = optuna.create_study()
+        study.optimize(self.objective, n_trials=20)
+
+    def objective(self, trial):
+        optimizer_name = trial.suggest_categorical("optimizer", ["sgd", "adam"])
+        lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        # optimizer = getattr(optim, optimizer_name)
+        self.config.optim = optimizer_name
+        self.config.lr = lr
+
+        dir = DirCheckAndMake(os.path.join(self.root_dir, str(self.iter_num)))
+        test_loss = OneTrain(self.config, root_dir=dir)
+        self.iter_num += 1
+
+        return test_loss
+
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -267,4 +242,5 @@ if __name__ == "__main__":
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
 
-        CycleTrain(conf).main()
+        # CycleTrain(conf).main()
+        CycleTrain(conf).OptunaTrain()

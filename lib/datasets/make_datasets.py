@@ -104,24 +104,26 @@ def _worker_init_fn(worker_id):
 
 def make_data_loader(
     cfg: CfgNode,
-    split: Literal["train", "val", "test"] = "train",
-    # is_train: bool = True,
+    ds_category: Literal["train", "val", "test"] = "train",
     is_distributed: bool = False,
     max_iter: int = -1,
-):
+) -> torch.utils.data.DataLoader:
     """
     データローダーを作成する関数．
 
     Args:
         cfg (CfgNode): `config` 情報が保存された辞書．
-        is_train (bool): 訓練用データセットか否か．Defaults to True.
-        is_distributed (bool): データをシャッフルしたものをテストに使用するか．Defaults to False.
-        max_iter (int): イテレーションの最大値．Defaults to -1.
+        ds_category (Literal[, optional): 使用するデータセットのカテゴリ名．Defaults to "train".
+        is_distributed (bool, optional): データをシャッフルしたものをテストに使用するか．. Defaults to False.
+        max_iter (int, optional): イテレーションの最大値. Defaults to -1.
+
+    Returns:
+        torch.utils.data.DataLoader: [description]
     """
     # --------------------------------------- #
     # 訓練データセットの場合のコンフィグ #
     # --------------------------------------- #
-    if split == "train":
+    if ds_category == "train":
         if (
             "train" not in cfg
             and "dataset" not in cfg.train
@@ -130,7 +132,7 @@ def make_data_loader(
             and "batch_sampler" not in cfg.train
         ):
             raise ("The required parameter for 'make_data_loader' has not been set.")
-        # split = "train"
+        # ds_category = "train"
         drop_last = False
         shuffle = True
         dataset_name = cfg.train.dataset
@@ -140,7 +142,7 @@ def make_data_loader(
     # --------------------------------------- #
     # 検証データセットの場合のコンフィグ #
     # --------------------------------------- #
-    elif split == "val":
+    elif ds_category == "val":
         if (
             "dataset" not in cfg.val
             and "batch_size" not in cfg.val
@@ -150,7 +152,7 @@ def make_data_loader(
             raise (
                 "Required parameter included in `val` of `make_data_loader` is not set."
             )
-        # split = "val"
+        # ds_category = "val"
         drop_last = False
         dataset_name = cfg.val.dataset
         batch_size = cfg.val.batch_size
@@ -160,7 +162,7 @@ def make_data_loader(
     # ----------------------------------------- #
     # テストデータセットの場合のコンフィグ #
     # ----------------------------------------- #
-    elif split == "test":
+    elif ds_category == "test":
         if (
             "dataset" not in cfg.test
             and "batch_size" not in cfg.test
@@ -170,7 +172,7 @@ def make_data_loader(
             raise (
                 "Required parameter included in `test` of `make_data_loader` is not set."
             )
-        # split = "test"
+        # ds_category = "test"
         drop_last = False
         dataset_name = cfg.test.dataset
         batch_size = cfg.test.batch_size
@@ -182,7 +184,7 @@ def make_data_loader(
 
     # dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
 
-    transforms = make_transforms(cfg, split)
+    transforms = make_transforms(cfg, ds_category)
     dataset = make_dataset(cfg, dataset_name=dataset_name, transforms=transforms)
     sampler = _make_data_sampler(dataset, shuffle)
     batch_sampler = _make_batch_data_sampler(
