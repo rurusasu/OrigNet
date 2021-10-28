@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Union
 
 sys.path.append(".")
 sys.path.append("../../")
@@ -21,9 +22,8 @@ from lib.utils.net_utils import save_model
 
 
 class OptunaTrain(object):
-    def __init__(self, config: CfgNode, root_dir: str) -> None:
+    def __init__(self, config: CfgNode) -> None:
         super(OptunaTrain, self).__init__()
-        self.root_dir = root_dir
         self.config = config
         self.trial_num = 1
         if "train" not in self.config:
@@ -53,7 +53,14 @@ class OptunaTrain(object):
             device_name="auto",
         )
 
-    def Train(self):
+    def Train(self, root_dir: str = "."):
+        """
+        optuna を使用した最適なハイパーパラメタの探索を行う関数．
+
+        Args:
+            update_root_dir (str] optional): 最適化中の訓練情報を保存するディレクトリの親ディレクトリのパス. Defaults to ".".
+        """
+        self.root_dir = root_dir
         study_name = "example-study"
         study = optuna.create_study(
             study_name=study_name,
@@ -130,14 +137,14 @@ class OptunaTrain(object):
 def main(config, root_dir: str = "."):
 
     # 訓練
-    opt = OptunaTrain(config, root_dir=root_dir)
-    opt.Train()
+    opt = OptunaTrain(config)
+    opt.Train(root_dir=root_dir)
 
 
 if __name__ == "__main__":
     import traceback
 
-    debug = True
+    debug = False
     torch.cuda.empty_cache()
 
     if not debug:

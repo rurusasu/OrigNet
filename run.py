@@ -87,6 +87,9 @@ class CycleTrain(object):
         self.record_dir = self.config.record_dir
         self.result_dir = self.config.result_dir
 
+        if self.config.optuna:
+            self.opt_train = OptunaTrain(self.config)
+
         self.iter_num = 1
 
     def UpdataCfg(self, iter_num: int = 1) -> bool:
@@ -155,7 +158,10 @@ class CycleTrain(object):
                     dir = DirCheckAndMake(
                         os.path.join(self.root_dir, str(self.iter_num))
                     )
-                    OneTrain(self.config, root_dir=dir)
+                    if self.config.optuna:
+                        self.OptunaTrain.Train(root_dir=self.root_dir)
+                    else:
+                        OneTrain(self.config, root_dir=dir)
                     hock = self.UpdataCfg(self.iter_num)
                     if hock:
                         # イテレーション数の更新

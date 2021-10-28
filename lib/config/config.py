@@ -80,6 +80,8 @@ cfg.skip_eval = False
 cfg.gpus = [0, 1, 2, 3]
 # use amp
 cfg.use_amp = True
+# use optuna
+cfg.optuna = False
 
 # ---------------------
 # train
