@@ -1,7 +1,8 @@
 import json
 import os
+import yaml
 from glob import glob
-from typing import Dict
+from typing import Any, Dict, List
 
 import cv2
 import ndjson
@@ -9,6 +10,7 @@ import numpy as np
 import skimage.io as io
 import torch
 from tqdm.contrib import tenumerate
+from yacs.config import CfgNode
 
 
 file_ext = {
@@ -150,6 +152,9 @@ def LoadImgAndResize(img_fp: str, input_img_size: Dict[int, int]) -> np.ndarray:
         return stacked_img
 
 
+# ----------------------
+# JSON ファイル関連
+# ----------------------
 def LoadNdjson(json_pth: str) -> Dict:
     """
     WriteDataToNdjson を使って保存した JSON ファイルからデータを読みだす関数．
@@ -208,6 +213,55 @@ def WriteDataToNdjson(data: Dict, wt_json_pth: str):
     with open(fp, "a") as f:
         writer = ndjson.writer(f)
         writer.writerow(data)
+
+
+def CfgSave(config: CfgNode, save_dir: str) -> Any:
+    """CfgNode を yaml ファイルとして保存するための関数．
+
+    Args:
+        config (CfgNode): 訓練の条件設定が保存された辞書．
+        save_dir (str): CfgNode を保存するための yaml ファイルのパス．
+    """
+    dic = {}
+    w_pth = os.path.join(save_dir, f"{config.task}_{config.model}.yaml")
+    # CfgNode -> Dict
+    # この変換をしない場合，不要な変数が YAML に保存される．
+    for k, v in config.items():
+        dic[k] = v
+
+    with open(w_pth, "w") as yf:
+        yaml.dump(dic, yf, default_flow_style=False)
+
+
+def OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
+    """
+    1回の訓練と検証時のデータを保存する`model`，`record`，`result` ディレクトリを作成するための関数．
+
+    Args:
+        config (CfgNode): 訓練の条件設定が保存された辞書．
+        root_dir (str): 親ディレクトリのパス．
+    """
+
+    model_dir = DirCheckAndMake(os.path.join(root_dir, config.model_dir))
+    record_dir = DirCheckAndMake(os.path.join(root_dir, config.record_dir))
+    result_dir = DirCheckAndMake(os.path.join(root_dir, config.result_dir))
+
+    return [model_dir, record_dir, result_dir]
+
+
+def OneTrainDir(root_dir: str = ".", dir_name: str = "default") -> str:
+    """
+    1回の訓練の全データを保存するディレクトリを作成する関数．
+    ディレクトリ名は，cfg.task で与えられる．
+
+    Args:
+        root_dir (str, optional): 親ディレクトリのパス．Default to ".".
+        dir_name (str, optional): 作成するディレクトリ名．Default to "default"．
+
+    """
+    dir_pth = os.path.join(root_dir, dir_name)
+    dir_pth = DirCheckAndMake(dir_pth)
+    return dir_pth
 
 
 if __name__ == "__main__":

@@ -1,8 +1,12 @@
 import torch
-from torch.functional import chain_matmul
-from lib.utils.optimizer.radam import RAdam
 
-_optimizer_factory = {"adam": torch.optim.Adam, "radam": RAdam, "sgd": torch.optim.SGD}
+# from lib.utils.optimizer.radam import RAdam
+
+_optimizer_factory = {
+    "adam": torch.optim.Adam,
+    "radam": torch.optim.RAdam,
+    "sgd": torch.optim.SGD,
+}
 
 
 _TransferLearningRateParam = {"alex": ["classifier.6.weight", "classifier.6.bias"]}

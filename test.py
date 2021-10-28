@@ -17,7 +17,7 @@ from lib.utils.net_utils import load_network
 
 def test(cfg: CfgNode):
     # 検証用のデータローダーを作成
-    val_loader = make_data_loader(cfg, split="test")
+    val_loader = make_data_loader(cfg, ds_category="test")
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":

@@ -33,8 +33,8 @@ def train(cfg: CfgNode) -> None:
     torch.backends.cudnn.deterministic = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
-    train_loader = make_data_loader(cfg, split="train", max_iter=cfg.ep_iter)
-    val_loader = make_data_loader(cfg, split="val")
+    train_loader = make_data_loader(cfg, ds_category="train", max_iter=cfg.ep_iter)
+    val_loader = make_data_loader(cfg, ds_category="val")
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":
@@ -97,7 +97,7 @@ def main(cfg):
 if __name__ == "__main__":
     import traceback
 
-    debug = False
+    debug = True
     torch.cuda.empty_cache()
 
     if not debug:
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         conf.save_ep = 5
         conf.eval_ep = 1
         conf.train = CN()
-        conf.train.epoch = 15
+        conf.train.epoch = 1
         conf.train.dataset = "SampleTrain"
         # conf.train.dataset = "AngleDetectTrain_2"
         conf.train.batch_size = 20
