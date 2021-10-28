@@ -8,8 +8,12 @@ ndjson
 numpy
 opencv-python
 openpyxl
+optuna
+optuna-dashboard
 Pillow
+plotly
 pycocotools
+pymysql
 PyYAML
 scikit-learn
 scikit-image

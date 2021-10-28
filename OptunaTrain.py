@@ -1,4 +1,3 @@
-from logging import root
 import os
 import sys
 
@@ -24,18 +23,11 @@ from lib.utils.net_utils import save_model
 class OptunaTrain(object):
     def __init__(self, config: CfgNode, root_dir: str) -> None:
         super(OptunaTrain, self).__init__()
+        self.root_dir = root_dir
         self.config = config
+        self.trial_num = 1
         if "train" not in self.config:
             raise ("The training configuration is not set.")
-
-        # <<< 訓練保存用のディレクトリの作成 <<<
-        train_dir = OneTrainDir(self.config, root_dir)
-        [mdl_dir, rec_dir, res_dir] = OneTrainLogDir(self.config, train_dir)
-
-        # <<< コンフィグの更新 <<<
-        self.config.model_dir = mdl_dir
-        self.config.record_dir = rec_dir
-        self.config.result_dir = res_dir
 
         # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
         torch.backends.cudnn.benchmark = False
@@ -60,18 +52,38 @@ class OptunaTrain(object):
             self.network,
             device_name="auto",
         )
-        self.recorder = make_recorder(self.config)
 
     def Train(self):
-        study = optuna.create_study()
-        study.optimize(self.objective, n_trials=20)
+        study_name = "example-study"
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=f"sqlite:///{study_name}.db",
+            load_if_exists=True,
+            direction="minimize",
+        )
+        study.optimize(self.objective, n_trials=5)
+        optuna.visualization.plot_optimization_history(study)
 
     def objective(self, trial):
-        optimizer_name = trial.suggest_categorical("optimizer", ["sgd", "adam"])
-        lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        # <<< 訓練保存用のディレクトリの作成 <<<
+        dir_name = self.config.task + f"_{self.trial_num}"
+        train_dir = OneTrainDir(self.root_dir, dir_name=dir_name)
+        [mdl_dir, rec_dir, res_dir] = OneTrainLogDir(self.config, train_dir)
+
+        # <<< コンフィグの更新 <<<
+        self.config.model_dir = mdl_dir
+        self.config.record_dir = rec_dir
+        self.config.result_dir = res_dir
+
+        self.recorder = make_recorder(self.config)
+
+        optimizer_name = trial.suggest_categorical(
+            "optimizer", ["adam", "radam", "sgd"]
+        )
+        lr = trial.suggest_categorical("lr", [1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
         # optimizer = getattr(optim, optimizer_name)
         self.config.optim = optimizer_name
-        self.config.lr = lr
+        self.config.train.lr = lr
 
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
         self.optimizer = make_optimizer(self.config, self.network)
@@ -110,7 +122,9 @@ class OptunaTrain(object):
         )
         # trainer.val(epoch, val_loader, evaluator, recorder)
         # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-        return self.network
+        self.trial_num += 1
+
+        return val_loss
 
 
 def main(config, root_dir: str = "."):

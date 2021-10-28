@@ -11,6 +11,7 @@ from yacs.config import CfgNode
 
 from train import train
 from test import test
+from OptunaTrain import OptunaTrain
 from lib.config.config import pth, cfg
 from lib.utils.base_utils import CfgSave, DirCheckAndMake, OneTrainDir, OneTrainLogDir
 
@@ -34,7 +35,7 @@ def OneTrain(config: CfgNode, root_dir: str):
         config (CfgNode): 訓練の条件設定が保存された辞書．
         root_dir (str): 親ディレクトリのパス．
     """
-    train_dir = OneTrainDir(config, root_dir)
+    train_dir = OneTrainDir(root_dir, dir_name=config.task)
     [mdl_dir, rec_dir, res_dir] = OneTrainLogDir(config, train_dir)
 
     # コンフィグの更新
@@ -175,21 +176,7 @@ class CycleTrain(object):
     def OptunaTrain(self):
         # パラメタ探索のため，追加学習を無効にする．
         self.config.resume = False
-        study = optuna.create_study()
-        study.optimize(self.objective, n_trials=20)
-
-    def objective(self, trial):
-        optimizer_name = trial.suggest_categorical("optimizer", ["sgd", "adam"])
-        lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-        # optimizer = getattr(optim, optimizer_name)
-        self.config.optim = optimizer_name
-        self.config.lr = lr
-
-        dir = DirCheckAndMake(os.path.join(self.root_dir, str(self.iter_num)))
-        test_loss = OneTrain(self.config, root_dir=dir)
-        self.iter_num += 1
-
-        return test_loss
+        OptunaTrain(self.config, self.root_dir)
 
 
 if __name__ == "__main__":

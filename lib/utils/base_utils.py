@@ -249,18 +249,17 @@ def OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
     return [model_dir, record_dir, result_dir]
 
 
-def OneTrainDir(config: CfgNode, root_dir: str = ".") -> str:
+def OneTrainDir(root_dir: str = ".", dir_name: str = "default") -> str:
     """
     1回の訓練の全データを保存するディレクトリを作成する関数．
     ディレクトリ名は，cfg.task で与えられる．
 
     Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        root_dir (str): 親ディレクトリのパス．
+        root_dir (str, optional): 親ディレクトリのパス．Default to ".".
+        dir_name (str, optional): 作成するディレクトリ名．Default to "default"．
+
     """
-    if "task" not in config:
-        raise ("The task is not set.")
-    dir_pth = os.path.join(root_dir, config.task)
+    dir_pth = os.path.join(root_dir, dir_name)
     dir_pth = DirCheckAndMake(dir_pth)
     return dir_pth
 
