@@ -137,7 +137,10 @@ class CycleTrain(object):
         # update用のコンフィグが指定されなかった場合．
         if not self.up_file:
             print(f"{self.args.cfg_file} に設定された情報を用いて訓練・検証を実行します．")
-            OneTrain(self.config, root_dir=self.root_dir)
+            if self.config.optuna:
+                self.opt_train.Train(root_dir=self.root_dir)
+            else:
+                OneTrain(self.config, root_dir=self.root_dir)
 
         # update用のコンフィグ情報が指定された場合．
         else:
@@ -159,7 +162,7 @@ class CycleTrain(object):
                         os.path.join(self.root_dir, str(self.iter_num))
                     )
                     if self.config.optuna:
-                        self.OptunaTrain.Train(root_dir=self.root_dir)
+                        self.opt_train.Train(root_dir=dir)
                     else:
                         OneTrain(self.config, root_dir=dir)
                     hock = self.UpdataCfg(self.iter_num)
@@ -176,7 +179,7 @@ class CycleTrain(object):
 
                 print("連続訓練が終了しました．")
             else:
-                print("ファイルが見つかりました．")
+                print("update.yaml ファイルが見つかりませんでした．")
                 print("連続訓練を停止します．")
 
     def OptunaTrain(self):
