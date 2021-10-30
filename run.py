@@ -88,6 +88,8 @@ class CycleTrain(object):
         self.result_dir = self.config.result_dir
 
         if self.config.optuna:
+            # パラメタ探索のため，追加学習を無効にする．
+            self.config.resume = False
             self.opt_train = OptunaTrain(self.config)
 
         self.iter_num = 1
@@ -179,14 +181,9 @@ class CycleTrain(object):
                 print("ファイルが見つかりました．")
                 print("連続訓練を停止します．")
 
-    def OptunaTrain(self):
-        # パラメタ探索のため，追加学習を無効にする．
-        self.config.resume = False
-        OptunaTrain(self.config, self.root_dir)
-
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -203,6 +200,7 @@ if __name__ == "__main__":
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
         conf.use_amp = False  # 半精度で訓練するか
+        conf.optuna = True
         conf.record_dir = "record"
         conf.ep_iter = -1
         conf.save_ep = 5
@@ -235,5 +233,5 @@ if __name__ == "__main__":
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
 
-        # CycleTrain(conf).main()
-        CycleTrain(conf).OptunaTrain()
+        CycleTrain(conf).main()
+        # CycleTrain(conf).OptunaTrain()
