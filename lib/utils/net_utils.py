@@ -149,13 +149,15 @@ def network_to_half(network):
     return nn.Sequential(tofp16(), BN_convert_float(network.half()))
 
 
-def reduce_loss_stats(loss_stats: dict) -> dict:
-    """
-    損失の統計情報を平均化する関数．
-
-    """
-    reduced_losses = {k: torch.mean(v) for k, v in loss_stats.items()}
-    return reduced_losses
+def _log_api_usage_once(obj: str) -> None:  # type: ignore
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        return
+    # NOTE: obj can be an object as well, but mocking it here to be
+    # only a string to appease torchscript
+    if isinstance(obj, str):
+        torch._C._log_api_usage_once(obj)
+    else:
+        torch._C._log_api_usage_once(f"{obj.__module__}.{obj.__class__.__name__}")
 
 
 def train(

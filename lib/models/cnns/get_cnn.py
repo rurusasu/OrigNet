@@ -7,12 +7,14 @@ from lib.models.cnns.alexnet import get_alex_net as get_alex
 from lib.models.cnns.efficientnet import get_efficient_net as get_eff
 from lib.models.cnns.inception import get_inception_net as get_inc
 from lib.models.cnns.resnet import get_res_net as get_res
+from lib.models.cnns.vgg import get_vgg_net as get_vgg
 
 _network_factory = {
     "alex": get_alex,
     "eff": get_eff,
     "inc": get_inc,
     "res": get_res,
+    "vgg": get_vgg,
 }
 
 

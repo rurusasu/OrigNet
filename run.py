@@ -195,7 +195,8 @@ if __name__ == "__main__":
         conf = CN()
         conf.task = "classify"
         conf.network = "cnns"
-        conf.model = "inc_v3"
+        # conf.model = "inc_v3"
+        conf.model = "vgg_11_bn"
         conf.model_dir = "model"
         conf.train_type = "transfer"  # or scratch
         # conf.train_type = "scratch"
