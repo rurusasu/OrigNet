@@ -160,6 +160,14 @@ def _log_api_usage_once(obj: str) -> None:  # type: ignore
         torch._C._log_api_usage_once(f"{obj.__module__}.{obj.__class__.__name__}")
 
 
+def reduce_loss_stats(loss_stats: dict) -> dict:
+    """
+    損失の統計情報を平均化する関数
+    """
+    reduced_losses = {k: torch.mean(v) for k, v in loss_stats.items()}
+    return reduced_losses
+
+
 def train(
     network: torch.nn,
     epoch: int,

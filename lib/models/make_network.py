@@ -1,4 +1,5 @@
 import sys
+from typing import Tuple
 
 sys.path.append(".")
 sys.path.append("..")
@@ -26,8 +27,12 @@ def make_network(cfg: CfgNode):
     Returns:
         [type]: [description]
     """
-    if "model" not in cfg and "network" not in cfg and "train_type" not in cfg:
-        raise ("The required parameter for `make_network` is not set.")
+    if "model" not in cfg:
+        raise ("Required parameters `model` for make_network are not set.")
+    if "network" not in cfg:
+        raise ("Required parameters `network` for make_network are not set.")
+    if "train_type" not in cfg:
+        raise ("Required parameters `train_type` for make_network are not set.")
 
     net_name = cfg.network
     get_network_fun = _network_factory[net_name]
@@ -35,54 +40,84 @@ def make_network(cfg: CfgNode):
 
     if net_name == "cnns":
         if cfg.train_type == "transfer":
-            if int(cfg.num_classes) > 0:
-                network = transfer_network(network, cfg.num_classes)
-            else:
-                raise ValueError("Invalid value for num_classes")
+            if "num_classes" not in cfg and cfg.num_classes < 1:
+                raise ("Required parameters `transfer` for make_network are not set.")
+            if "replaced_layer_num" not in cfg and cfg.replaced_layer_num < 1:
+                raise (
+                    "Required parameters `replace_layer_num` for make_network are not set."
+                )
+
+            network, cfg.replaced_layer_num = transfer_network(
+                network, cfg.num_classes, cfg.replaced_layer_num
+            )
     elif net_name == "smp":
         pass
 
     return network
 
 
-def transfer_network(network, num_classes: int):
+def transfer_network(
+    network, num_classes: int, replaced_layer_num: int = 1
+) -> Tuple[nn.Sequential, int]:
     """
     転移学習用にモデルの全結合層を未学習のものに置き換える関数
 
     Args:
         network: make_network で読みだされたモデル
-        num_classes (int): 転移学習時のクラス数
+        num_classes (int): 転移学習時のクラス数．
+        replaced_layer_num (int, optional): 置き換えたい全結合層の数．出力層のみ転移学習時のクラス数に置き換え，それ以外は weight を xavier の初期値で，bias を [0, 1] の一様分布の乱数で初期化する．Default to 1.
 
     Return:
-        network
+        network (torch.nn.Sequential): 出力数と必要に応じて複数の全結合層の重みが初期化されたネットワーク．
+        replaced_layer_num (int): 実際に重みが初期化された層の数．
     """
+    if num_classes < 1:
+        raise (
+            "num_classes error. This value should be given as a positive integer greater than zero."
+        )
+    if replaced_layer_num < 1:
+        raise (
+            "relpaced layer number error. This value should be given as a positive integer greater than zero."
+        )
+
+    # 最終出力層の重みを初期化したかを判定するフラグ
+    # False: 初期化した。
+    out_layer_replaced = True
+    iter = 0
     if hasattr(network, "classifier"):
-        # AlexNet の場合
+        # classifier が複数の層から構成されている場合（例: AlexNet, VGG）
         if issubclass(type(network.classifier), nn.Sequential):
-            # num_ftrs = network.classifier[-1].in_features
-            num_ftrs = network.classifier[1].in_features
-            out_ftrs = network.classifier[1].out_features
-            fc = nn.Linear(num_ftrs, out_features=out_ftrs)
-            network.classifier[1] = fc
-            num_ftrs = network.classifier[4].in_features
-            out_ftrs = network.classifier[4].out_features
-            fc = nn.Linear(num_ftrs, out_features=out_ftrs)
-            network.classifier[4] = fc
-            num_ftrs = network.classifier[6].in_features
-            out_ftrs = network.classifier[6].out_features
-            fc = nn.Linear(num_ftrs, out_features=num_classes)
-            network.classifier[6] = fc
+            for key, layer in reversed(network.classifier._modules.items()):
+                if issubclass(type(layer), nn.Linear):
+                    # 置き換えたい全結合層の数と実際に置き換えた全結合層の数が同数になった場合，break.
+                    if iter > replaced_layer_num:
+                        break
+                    if out_layer_replaced:
+                        in_features = layer.in_features  # 全結合層への既存の入力サイズを取得
+                        fc = nn.Linear(
+                            in_features, out_features=num_classes
+                        )  # 訓練させたいクラス数に応じて出力サイズを変更
+                        network.classifier._modules[key] = fc  # 全結合層を置き換え
+                        out_layer_replaced = False  # フラグを変更
+                        iter += 1
+                    else:
+                        nn.init.xavier_uniform_(layer.weight)
+                        nn.init.uniform_(layer.bias, 0, 1)  # 一様分布
+                        iter += 1
+
+            return network, iter
         else:
             # EfficientNet の場合
             num_ftrs = network.classifier.in_features
             fc = nn.Linear(num_ftrs, out_features=num_classes)
             network.classifier = fc
+            return network, 1
+    # ResNet の場合
     elif hasattr(network, "fc"):
-        # ResNet の場合
         num_ftrs = network.fc.in_features
         fc = nn.Linear(num_ftrs, out_features=num_classes)
         network.fc = fc
-    return network
+        return network, 1
 
 
 if __name__ == "__main__":

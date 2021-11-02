@@ -27,6 +27,13 @@ $ source ./create-env-on-wsl.sh
 $ pip3 install torch==1.9.1+cu111 torchvision==0.10.1+cu111 torchaudio===0.9.1 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
+## optuna-dashboard を用いた最適化の可視化
+optuna-dashboard を使用することで、自動的に行った最適化のうち、もっともよかったハイパーパラメタの組み合わせを瞬時に把握することができる [optuna-dashboard](https://github.com/optuna/optuna-dashboard)．dashboard への接続は，
+```cmd
+$  optuna-dashboard sqlite:////${DIR_PATH}.db
+```
+で行える．${DIR_PATH} には，例えば `/mnt/d/My_programing/OrigNet/data/trained/1/opt_log` などの `.db` ファイルへのパスが入る．
+
 ## 共通変数
 ```pyhton
 cfg (CfgNode): 訓練の条件設定が保存された辞書．

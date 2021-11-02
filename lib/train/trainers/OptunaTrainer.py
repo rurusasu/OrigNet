@@ -1,6 +1,5 @@
 import os
 import sys
-from typing import Union
 
 sys.path.append(".")
 sys.path.append("../../")
@@ -21,18 +20,25 @@ from lib.utils.base_utils import OneTrainDir, OneTrainLogDir
 from lib.utils.net_utils import save_model
 
 
-class OptunaTrain(object):
-    def __init__(self, config: CfgNode) -> None:
-        super(OptunaTrain, self).__init__()
+class OptunaTrainer(object):
+    def __init__(
+        self,
+        config: CfgNode,
+    ) -> None:
+        super(OptunaTrainer, self).__init__()
         self.config = config
-        self.trial_num = 1
         if "train" not in self.config:
-            raise ("The training configuration is not set.")
+            raise ("Required parameters `train` for OptinaTrainer are not set.")
+        if "optuna_trials" not in self.config or self.config.optuna_trials < 0:
+            raise ("Required parameters `optuna_trials` for CycleTrain are not set.")
+        self.max_trial_num = self.config.optuna_trials
+        self.trial_count = 1
 
         # PyTorchが自動で、処理速度の観点でハードウェアに適したアルゴリズムを選択してくれます。
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
         torch.multiprocessing.set_sharing_strategy("file_system")
+
         # 訓練と検証用のデータローダーを作成
         self.train_loader = make_data_loader(
             self.config, ds_category="train", max_iter=self.config.ep_iter
@@ -52,6 +58,9 @@ class OptunaTrain(object):
             self.network,
             device_name="auto",
         )
+        self.mdl_dir = self.config.model_dir
+        self.rec_dir = self.config.record_dir
+        self.res_dir = self.config.result_dir
 
     def Train(self, root_dir: str = "."):
         """
@@ -61,20 +70,29 @@ class OptunaTrain(object):
             update_root_dir (str] optional): 最適化中の訓練情報を保存するディレクトリの親ディレクトリのパス. Defaults to ".".
         """
         self.root_dir = root_dir
-        study_name = "example-study"
+        study_name = os.path.join(self.root_dir, "opt_log")
+        # storage への変数の渡し方
+        # optuna_doc: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html
+        # REF: https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls
         study = optuna.create_study(
             study_name=study_name,
             storage=f"sqlite:///{study_name}.db",
             load_if_exists=True,
             direction="minimize",
         )
-        study.optimize(self.objective, n_trials=5)
+        study.optimize(self.objective, n_trials=self.max_trial_num)
         optuna.visualization.plot_optimization_history(study)
 
     def objective(self, trial):
         # <<< 訓練保存用のディレクトリの作成 <<<
-        dir_name = self.config.task + f"_{self.trial_num}"
+        dir_name = self.config.task + f"_{self.trial_count}"
         train_dir = OneTrainDir(self.root_dir, dir_name=dir_name)
+
+        # <<< コンフィグの初期化 <<<
+        self.config.model_dir = self.mdl_dir
+        self.config.record_dir = self.rec_dir
+        self.config.result_dir = self.res_dir
+
         [mdl_dir, rec_dir, res_dir] = OneTrainLogDir(self.config, train_dir)
 
         # <<< コンフィグの更新 <<<
@@ -84,14 +102,19 @@ class OptunaTrain(object):
 
         self.recorder = make_recorder(self.config)
 
+        # ----------------------------------------
+        # 最適化するパラメタ群
+        # ----------------------------------------
         optimizer_name = trial.suggest_categorical(
             "optimizer", ["adam", "radam", "sgd"]
         )
         lr = trial.suggest_categorical("lr", [1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
-        # optimizer = getattr(optim, optimizer_name)
+        replaced_layer_num = trial.suggest_categorical("replaced_layer_num", [1, 2, 3])
+        # ----------------------------------------
+
         self.config.optim = optimizer_name
         self.config.train.lr = lr
-
+        self.config.replaced_layer_num = replaced_layer_num
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
         self.optimizer = make_optimizer(self.config, self.network)
         self.scheduler = make_lr_scheduler(self.config, self.optimizer)
@@ -129,7 +152,7 @@ class OptunaTrain(object):
         )
         # trainer.val(epoch, val_loader, evaluator, recorder)
         # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-        self.trial_num += 1
+        self.trial_count += 1
 
         return val_loss
 
@@ -137,7 +160,7 @@ class OptunaTrain(object):
 def main(config, root_dir: str = "."):
 
     # 訓練
-    opt = OptunaTrain(config)
+    opt = OptunaTrainer(config)
     opt.Train(root_dir=root_dir)
 
 

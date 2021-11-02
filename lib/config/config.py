@@ -64,6 +64,7 @@ cfg.record_dir = "data/record"
 cfg.result_dir = "data/result"
 # transfer or scratch
 cfg.train_type = "transfer"
+cfg.replaced_layer_num = 1  # 転移学習で置き換える全結合層の数
 # img_size
 cfg.img_width = 255
 cfg.img_height = 255
@@ -82,6 +83,7 @@ cfg.gpus = [0, 1, 2, 3]
 cfg.use_amp = True
 # use optuna
 cfg.optuna = False
+cfg.optuna_trials = 10
 
 # ---------------------
 # train

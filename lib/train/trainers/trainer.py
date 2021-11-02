@@ -14,7 +14,10 @@ from lib.utils.net_utils import train, val
 
 class Trainer(object):
     def __init__(
-        self, network, device_name=Literal["cpu", "cuda", "auto"], use_amp: bool = True
+        self,
+        network,
+        device_name: Literal["cpu", "cuda", "auto"] = "auto",
+        use_amp: bool = True,
     ):
         """
         device 引数について不明な場合は以下を参照．
@@ -46,13 +49,6 @@ class Trainer(object):
             self.network = DataParallel(self.network, device_ids=self.num_devices)
         # ---- multiple minibatch ---- #
         self.batch_multiplier = 3
-
-    def reduce_loss_stats(self, loss_stats: dict) -> dict:
-        """
-        損失の統計情報を平均化する関数
-        """
-        reduced_losses = {k: torch.mean(v) for k, v in loss_stats.items()}
-        return reduced_losses
 
     def train(self, epoch: int, data_loader, optimizer, recorder):
         train(

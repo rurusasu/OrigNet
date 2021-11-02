@@ -1,24 +1,39 @@
 import os
+import random
 import sys
-
-import optuna
 import yaml
 
 sys.path.append(".")
 sys.path.append("..")
 
+import numpy as np
+import torch
 from yacs.config import CfgNode
 
 from train import train
 from test import test
-from OptunaTrain import OptunaTrain
 from lib.config.config import pth, cfg
+from lib.train.trainers.OptunaTrainer import OptunaTrainer
 from lib.utils.base_utils import CfgSave, DirCheckAndMake, OneTrainDir, OneTrainLogDir
 
+seed = 2021
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--up_file", type=str, default="", help="更新するパラメタのYAMLファイルパス")
-# args = parser.parse_args()
+
+def fix_seed(seed: int):
+    """
+    乱数の seed を固定するための関数．
+
+    Args:
+        seed (int): 乱数を固定するための整数値．
+    """
+    # random
+    random.seed(seed)
+    # Numpy
+    np.random.seed(seed)
+    # Pytorch
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
 
 
 def OneTrain(config: CfgNode, root_dir: str):
@@ -71,9 +86,17 @@ def make_learning_dir(dir_name: str = "trained") -> str:
 class CycleTrain(object):
     def __init__(self, config) -> None:
         super(CycleTrain, self).__init__()
-        # self.args = args
-        self.up_file = os.path.join(pth.CONFIGS_DIR, "update.yaml")
         self.config = config
+        if "optuna" not in self.config:
+            raise ("Required parameters `optuna` for CycleTrain are not set.")
+        self.up_file = os.path.join(pth.CONFIGS_DIR, "update.yaml")
+
+        # 乱数の seed を固定
+        fix_seed(seed)
+
+        # ------------------------------------
+        # ディレクトリ設定
+        # ------------------------------------
         self.root_dir = make_learning_dir()
         # もしモデル保存用ディレクトリが設定されていなかった場合．
         if "model_dir" not in self.config:
@@ -82,15 +105,19 @@ class CycleTrain(object):
             self.config.record_dir = "record"
         if "result_dir" not in self.config:
             self.config.result_dir = "result"
-
         self.model_dir = self.config.model_dir
         self.record_dir = self.config.record_dir
         self.result_dir = self.config.result_dir
+        # ------------------------------------
 
         if self.config.optuna:
+            if "optuna_trials" not in self.config or self.config.optuna_trials < 0:
+                raise (
+                    "Required parameters `optuna_trials` for CycleTrain are not set."
+                )
             # パラメタ探索のため，追加学習を無効にする．
             self.config.resume = False
-            self.opt_train = OptunaTrain(self.config)
+            self.opt_train = OptunaTrainer(self.config)
 
         self.iter_num = 1
 
@@ -199,12 +226,14 @@ if __name__ == "__main__":
         conf.model = "vgg_11_bn"
         conf.model_dir = "model"
         conf.train_type = "transfer"  # or scratch
+        conf.replaced_layer_num = 1  # 転移学習で置き換える全結合層の数
         # conf.train_type = "scratch"
         conf.img_width = 224
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
         conf.use_amp = False  # 半精度で訓練するか
         conf.optuna = True
+        conf.optuna_trials = 5
         conf.record_dir = "record"
         conf.ep_iter = -1
         conf.save_ep = 5
