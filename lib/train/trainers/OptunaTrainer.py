@@ -16,7 +16,7 @@ from lib.train.scheduler import make_lr_scheduler
 from lib.train.optimizers import make_optimizer
 from lib.train.trainers.make_trainer import make_trainer
 from lib.train.recorder import make_recorder
-from lib.utils.base_utils import OneTrainDir, OneTrainLogDir
+from lib.utils.base_utils import CfgSave, OneTrainDir, OneTrainLogDir
 from lib.utils.net_utils import save_model
 
 
@@ -88,6 +88,11 @@ class OptunaTrainer(object):
         study.optimize(self.objective, n_trials=self.max_trial_num)
         optuna.visualization.plot_optimization_history(study)
 
+        # ベストなパラメタの組み合わせの保存
+        df = study.trials_dataframe()
+        csv_save_pth = os.path.join(self.root_dir + "optuna_lgb.csv")
+        df.to_csv(csv_save_pth)
+
     def objective(self, trial):
         # <<< 訓練保存用のディレクトリの作成 <<<
         dir_name = self.config.task + f"_{self.trial_count}"
@@ -155,6 +160,9 @@ class OptunaTrainer(object):
             epoch,
             self.config.model_dir,
         )
+
+        # Cfg 情報の保存
+        CfgSave(self.config, train_dir)
         # trainer.val(epoch, val_loader, evaluator, recorder)
         # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
         self.trial_count += 1
