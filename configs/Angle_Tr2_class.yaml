@@ -8,7 +8,7 @@ img_height: 224
 resume: True  # 追加学習するか
 use_amp: False  # 半精度で訓練するか
 optuna: True  # optuna を使用して最適化するか
-optuna_trials: 5
+optuna_trials: 30
 record_dir: "record"
 ep_iter: -1
 save_ep: 5

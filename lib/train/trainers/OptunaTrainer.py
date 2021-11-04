@@ -90,7 +90,7 @@ class OptunaTrainer(object):
 
         # ベストなパラメタの組み合わせの保存
         df = study.trials_dataframe()
-        csv_save_pth = os.path.join(self.root_dir + "optuna_lgb.csv")
+        csv_save_pth = os.path.join(self.root_dir, "optuna_lgb.csv")
         df.to_csv(csv_save_pth)
 
     def objective(self, trial):
