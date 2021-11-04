@@ -54,7 +54,7 @@ class DataAugmentor(object):
         # 訓練で使用するデータ拡張
         self.transform["train"] = albu.Compose(
             [
-                albu.HorizontalFlip(p=0.5),
+                # albu.HorizontalFlip(p=0.5),
                 albu.Lambda(image=to_tensor, mask=mask_to_tensor),
             ]
         )

@@ -213,7 +213,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -256,6 +256,7 @@ if __name__ == "__main__":
         conf.train.gamma = 0.5
         conf.val = CN()
         conf.val.dataset = "SampleTest"
+        # conf.val.dataset = "AngleDetectTrain_2"
         conf.val.batch_size = 20
         conf.val.num_workers = 2
         conf.val.batch_sampler = ""
@@ -267,4 +268,3 @@ if __name__ == "__main__":
         conf.test.batch_sampler = ""
 
         CycleTrain(conf).main()
-        # CycleTrain(conf).OptunaTrain()
