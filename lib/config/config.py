@@ -22,6 +22,7 @@ pth.CONFIGS_DIR = os.path.join(pth.ROOT_DIR, "configs")
 Dataset Path
 """
 pth.DATA_DIR = os.path.join(pth.ROOT_DIR, "data")
+pth.ASSETS_DIR = os.path.join(pth.ROOT_DIR, "assets")
 # pth.MNIST_DIR = os.path.join(pth.DATA_DIR, 'mnist')
 
 
