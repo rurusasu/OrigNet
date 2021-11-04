@@ -71,10 +71,15 @@ class OptunaTrainer(object):
         """
         self.root_dir = root_dir
         study_name = os.path.join(self.root_dir, "opt_log")
+        # 枝狩りのための Pruner を作成
+        pruner = optuna.pruners.SuccessiveHalvingPruner(
+            min_resource=1, reduction_factor=4, min_early_stopping_rate=0
+        )
         # storage への変数の渡し方
         # optuna_doc: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html
         # REF: https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls
         study = optuna.create_study(
+            pruner=pruner,
             study_name=study_name,
             storage=f"sqlite:///{study_name}.db",
             load_if_exists=True,
