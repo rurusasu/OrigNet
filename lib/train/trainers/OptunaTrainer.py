@@ -1,5 +1,6 @@
 import os
 import sys
+import uuid
 
 sys.path.append(".")
 sys.path.append("../../")
@@ -94,6 +95,29 @@ class OptunaTrainer(object):
         df.to_csv(csv_save_pth)
 
     def objective(self, trial):
+        # REF: https://qiita.com/koshian2/items/ef9c0c74fe38739599d5
+        # 試行に UUID を設定
+        trial_uuid = str(uuid.uuid4())
+        trial.set_user_attr("uuid", trial_uuid)
+
+        # ----------------------------------------
+        # 最適化するパラメタ群
+        # ----------------------------------------
+        params = {
+            "optimizer_name": trial.suggest_categorical(
+                "optimizer", ["adam", "radam", "sgd"]
+            ),
+            "lr": trial.suggest_categorical("lr", [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]),
+            "replaced_layer_num": trial.suggest_categorical(
+                "replaced_layer_num", [1, 2, 3]
+            ),
+        }
+        # ----------------------------------------
+
+        self.config.optim = params["optimizer_name"]
+        self.config.train.lr = params["lr"]
+        self.config.replaced_layer_num = params["replaced_layer_num"]
+
         # <<< 訓練保存用のディレクトリの作成 <<<
         dir_name = self.config.task + f"_{self.trial_count}"
         train_dir = OneTrainDir(self.root_dir, dir_name=dir_name)
@@ -112,19 +136,6 @@ class OptunaTrainer(object):
 
         self.recorder = make_recorder(self.config)
 
-        # ----------------------------------------
-        # 最適化するパラメタ群
-        # ----------------------------------------
-        optimizer_name = trial.suggest_categorical(
-            "optimizer", ["adam", "radam", "sgd"]
-        )
-        lr = trial.suggest_categorical("lr", [1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
-        replaced_layer_num = trial.suggest_categorical("replaced_layer_num", [1, 2, 3])
-        # ----------------------------------------
-
-        self.config.optim = optimizer_name
-        self.config.train.lr = lr
-        self.config.replaced_layer_num = replaced_layer_num
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
         self.optimizer = make_optimizer(self.config, self.network)
         self.scheduler = make_lr_scheduler(self.config, self.optimizer)
@@ -150,6 +161,7 @@ class OptunaTrainer(object):
                 val_loss = self.trainer.val(
                     epoch, self.val_loader, recorder=self.recorder
                 )
+                trial.set_user_attr("val_loss", val_loss.item())
 
         # 訓練終了後のモデルを保存
         save_model(
@@ -167,7 +179,7 @@ class OptunaTrainer(object):
         # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
         self.trial_count += 1
 
-        return val_loss
+        return val_loss.item()
 
 
 def main(config, root_dir: str = "."):

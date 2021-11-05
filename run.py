@@ -213,7 +213,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:

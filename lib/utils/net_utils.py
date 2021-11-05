@@ -2,6 +2,7 @@ import gc
 import os
 import time
 
+import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -274,7 +275,7 @@ def val(
     recorder=None,
     device: torch.device = "cpu",
     use_amp: bool = False,
-):
+) -> np.ndarray:
     """
     1 Epoch 分のデータを用いて検証を行う関数．
 
