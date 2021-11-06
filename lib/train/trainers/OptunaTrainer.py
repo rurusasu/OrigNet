@@ -52,13 +52,7 @@ class OptunaTrainer(object):
         elif self.config.task == "semantic_segm":
             # 理由は，画素値が 0 のラベルを与える必要があるため．
             self.config.num_classes = len(self.train_loader.dataset.cls_names) + 1
-        # 指定した device 上でネットワークを生成
-        self.network = make_network(self.config)
-        self.trainer = make_trainer(
-            self.config,
-            self.network,
-            device_name="auto",
-        )
+
         self.mdl_dir = self.config.model_dir
         self.rec_dir = self.config.record_dir
         self.res_dir = self.config.result_dir
@@ -76,10 +70,13 @@ class OptunaTrainer(object):
         pruner = optuna.pruners.SuccessiveHalvingPruner(
             min_resource=1, reduction_factor=4, min_early_stopping_rate=0
         )
+        # sampler の seed 固定
+        # REF: https://qiita.com/c60evaporator/items/633575c37863d1d18335
         # storage への変数の渡し方
         # optuna_doc: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html
         # REF: https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls
         study = optuna.create_study(
+            sampler=optuna.samplers.TPESampler(seed=42),
             pruner=pruner,
             study_name=study_name,
             storage=f"sqlite:///{study_name}.db",
@@ -134,6 +131,12 @@ class OptunaTrainer(object):
         self.config.record_dir = rec_dir
         self.config.result_dir = res_dir
 
+        self.network = make_network(self.config)
+        self.trainer = make_trainer(
+            self.config,
+            self.network,
+            device_name="auto",
+        )
         self.recorder = make_recorder(self.config)
 
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
