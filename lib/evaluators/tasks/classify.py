@@ -47,7 +47,12 @@ class ClassifyEvaluator(object):
         # self.writer = pd.ExcelWriter(os.path.join(self.result_dir, "result.xlsx"))
         self.wb = openpyxl.Workbook()
         self.sheet = self.wb.active
+
+        self.data = {"acc": None, "rec": None, "pre": None, "f1": None}
         self.row = 1
+        for i, key in enumerate(self.data.keys()):
+            self.sheet.cell(row=self.row, column=(i + 1)).value = key
+        self.row += 1
 
     def evaluate(
         self,
@@ -62,12 +67,6 @@ class ClassifyEvaluator(object):
         # ---------------- #
         # 評価指標を計算 #
         # ---------------- #
-        # `batch`ごとの分類結果を表示
-        # report = classification_report(
-        #     target.tolist(), output.tolist(), labels=self.cls_labels
-        # )
-        # print(report)
-
         # 正解率
         acc_score = accuracy_score(target, output)
         self.accuracy.append(acc_score)
@@ -81,18 +80,16 @@ class ClassifyEvaluator(object):
         f1 = f1_score(target, output, average="micro")
         self.f1.append(f1)
 
-        data = {
-            "acc": acc_score.tolist(),
-            "rec": rec_score.tolist(),
-            "pre": pre_score.tolist(),
-            "f1": f1.tolist(),
-        }
+        self.data["acc"] = acc_score.tolist()
+        self.data["rec"] = rec_score.tolist()
+        self.data["pre"] = pre_score.tolist()
+        self.data["f1"] = f1.tolist()
 
-        for key in data.keys():
+        for i, key in enumerate(self.data.keys()):
             # worksheet.write(row, 0, key)
             # worksheet.write_row(row, 1, myDictionary[key])
-            self.sheet.cell(row=self.row, column=2).value = data[key]
-            self.row += 1
+            self.sheet.cell(row=self.row, column=(i + 1)).value = self.data[key]
+        self.row += 1
 
         self.outputs = np.hstack((self.outputs, output))
         self.targets = np.hstack((self.targets, target))

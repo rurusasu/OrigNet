@@ -4,6 +4,7 @@ from typing import Literal
 
 sys.path.append("../../../")
 
+import numpy as np
 import torch
 from torch.cuda import amp
 from torch.nn import DataParallel
@@ -62,7 +63,7 @@ class Trainer(object):
             batch_multiplier=self.batch_multiplier,
         )
 
-    def val(self, epoch, data_loader, evaluator=None, recorder=None):
+    def val(self, epoch, data_loader, evaluator=None, recorder=None) -> np.ndarray:
         val_loss = val(
             self.network,
             epoch=epoch,

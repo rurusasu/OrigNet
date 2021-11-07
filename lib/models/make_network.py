@@ -118,6 +118,12 @@ def transfer_network(
         fc = nn.Linear(num_ftrs, out_features=num_classes)
         network.fc = fc
         return network, 1
+    # IncResNetV2 の場合
+    elif hasattr(network, "classif"):
+        num_ftrs = network.classif.in_features
+        fc = nn.Linear(num_ftrs, out_features=num_classes)
+        network.classif = fc
+        return network, 1
 
 
 if __name__ == "__main__":

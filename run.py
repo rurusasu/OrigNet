@@ -184,16 +184,25 @@ class CycleTrain(object):
                 # サイクルが最後まで行った or up_file not found: False
                 # それ以外の場合: True
                 hock = False
+
+                # --------------------------
+                # 連続訓練のメイン部分
+                # --------------------------
                 while True:
-                    print(f"{self.iter_num} 番目の学習を実行します。")
+                    print(f"{self.config.model} の学習を実行します。")
                     # イテレーションごとのルートディレクトリの作成
                     dir = DirCheckAndMake(
                         os.path.join(self.root_dir, str(self.iter_num))
                     )
+
+                    # ---------------------#
+                    # Training & Testing #
+                    # ---------------------#
                     if self.config.optuna:
                         self.opt_train.Train(root_dir=dir)
                     else:
                         OneTrain(self.config, root_dir=dir)
+
                     hock = self.UpdataCfg(self.iter_num)
                     if hock:
                         # イテレーション数の更新
@@ -213,7 +222,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -223,7 +232,8 @@ if __name__ == "__main__":
         conf.task = "classify"
         conf.network = "cnns"
         # conf.model = "inc_v3"
-        conf.model = "vgg_11_bn"
+        # conf.model = "vgg_11_bn"
+        conf.model = "inc_res_v2"
         conf.model_dir = "model"
         conf.train_type = "transfer"  # or scratch
         conf.replaced_layer_num = 1  # 転移学習で置き換える全結合層の数
@@ -240,7 +250,7 @@ if __name__ == "__main__":
         conf.eval_ep = 1
         conf.skip_eval = False
         conf.train = CN()
-        conf.train.epoch = 1
+        conf.train.epoch = 5
         conf.train.dataset = "SampleTrain"
         # conf.train.dataset = "AngleDetectTrain_2"
         conf.train.batch_size = 20

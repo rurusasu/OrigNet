@@ -4,6 +4,7 @@ import sys
 sys.path.append("../..")
 sys.path.append("../../../")
 
+import numpy as np
 import torch
 from yacs.config import CfgNode
 
@@ -15,7 +16,7 @@ from lib.train.trainers.make_trainer import make_trainer
 from lib.utils.net_utils import load_network
 
 
-def test(cfg: CfgNode):
+def test(cfg: CfgNode) -> np.ndarray:
     # 検証用のデータローダーを作成
     val_loader = make_data_loader(cfg, ds_category="test")
 
@@ -30,7 +31,12 @@ def test(cfg: CfgNode):
     trainer = make_trainer(cfg, network, device_name="auto")
     evaluator = make_evaluator(cfg, cls_names=val_loader.dataset.cls_names)
     epoch = load_network(network, cfg.model_dir)
-    trainer.val(epoch, val_loader, evaluator)
+    val_loss = trainer.val(epoch, val_loader, evaluator)
+
+    # 不要なオブジェクトを削除
+    del network, trainer, evaluator
+
+    return val_loss
 
 
 def main(cfg):

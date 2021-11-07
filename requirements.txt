@@ -3,6 +3,7 @@ black
 easydict
 flake8
 ipykernel
+ipywidgets
 matplotlib
 ndjson
 numpy

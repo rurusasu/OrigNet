@@ -13,6 +13,7 @@ from yacs.config import CfgNode
 from lib.config.config import pth, cfg
 from lib.datasets.make_datasets import make_data_loader
 from lib.models.make_network import make_network
+from test import test
 from lib.train.scheduler import make_lr_scheduler
 from lib.train.optimizers import make_optimizer
 from lib.train.trainers.make_trainer import make_trainer
@@ -143,6 +144,10 @@ class OptunaTrainer(object):
         self.optimizer = make_optimizer(self.config, self.network)
         self.scheduler = make_lr_scheduler(self.config, self.optimizer)
 
+        # ----------#
+        # Training #
+        # ----------#
+        print(f"{self.trial_count} 番目の訓練を実行します．")
         for epoch in range(self.config.train.epoch):
             self.recorder.epoch = epoch
             self.trainer.train(epoch, self.train_loader, self.optimizer, self.recorder)
@@ -178,9 +183,16 @@ class OptunaTrainer(object):
 
         # Cfg 情報の保存
         CfgSave(self.config, train_dir)
-        # trainer.val(epoch, val_loader, evaluator, recorder)
-        # print(prof.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
         self.trial_count += 1
+
+        # 不要なオブジェクトを削除
+        del self.network, self.trainer, self.optimizer, self.scheduler
+
+        # -------- #
+        # Testing #
+        # -------- #
+        print("Test を実行します．")
+        test(self.config)
 
         return val_loss.item()
 
