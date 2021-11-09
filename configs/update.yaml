@@ -9,15 +9,15 @@
   img_width: 299
   img_height: 299
   train:
-    dataset: "AngleDetectTrain_2"
+    # dataset: "AngleDetectTrain_2"
     # dataset: "SampleTest"
     batch_sampler: ""
   val:
-    dataset: "AngleDetectTrain_2"
+    # dataset: "AngleDetectTrain_2"
     # dataset: SampleTrain
     batch_sampler: ""
   test:
-    dataset: "AngleDetectTrain_2"
+    # dataset: "AngleDetectTrain_2"
     # dataset: "SampleTrain"
     batch_sampler: ""
 - loop: 2

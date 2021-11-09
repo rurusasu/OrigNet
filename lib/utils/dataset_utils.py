@@ -334,7 +334,8 @@ class ARCDataset(object):
         return PixelValueToLabel[catNms][0]
 
     def getImgIds(self, catIds: np.ndarray) -> List[int]:
-        """ラベル値 ndarray[int] と一致するデータ番号 (id) のリストを返す関数．
+        """
+        ラベル値 ndarray[int] と一致するデータ番号 (id) のリストを返す関数．
 
         Args:
             catIds (List[int]): ラベル値の ndarray 配列．
@@ -342,18 +343,38 @@ class ARCDataset(object):
         Returns:
             List[int]: データ番号 (id) のリスト．例: [1, 2, 3, ]
         """
+        # pandas.DataFrameの行を条件で抽出するquery
+        # REF: https://note.nkmk.me/python-pandas-query/
         df = self.df.query(f"category_id in {catIds}")
         return df["id"].tolist()
 
-    def loadImgs(self, imgIds: List[int]) -> Dict:
+    def loadImgs(self, imgIds: List[int]) -> List[Dict[str, str]]:
         """
 
         Args:
             imgIds (List[int]): [description]
         """
+        # pandas.DataFrameの行を条件で抽出するquery
+        # REF: https://note.nkmk.me/python-pandas-query/
         df = self.df.query(f"id in {imgIds}")
 
         df = df[["img_file_name", "id"]]
+        # DataFrame -> Dict
+        # REF: https://note.nkmk.me/python-pandas-to-dict/
+        df = df.to_dict(orient="records")
+        return df
+
+    def loadMasks(self, imgIds: List[int]):
+        """画像に対応するマスク画像
+
+        Args:
+            imgIds (List[int]): データセットないの画像に与えられた一意の id
+        """
+        # pandas.DataFrameの行を条件で抽出するquery
+        # REF: https://note.nkmk.me/python-pandas-query/
+        df = self.df.query(f"id in {imgIds}")
+
+        df = df[["anno_file_name"]]
         # DataFrame -> Dict
         # REF: https://note.nkmk.me/python-pandas-to-dict/
         df = df.to_dict(orient="records")
@@ -391,14 +412,17 @@ if __name__ == "__main__":
 
     dataset = ARCDataset(json_fp)
     df = dataset.get_df()
-    pprint.pprint(df)
+    # pprint.pprint(df)
 
     catNms = "item1"
     catIds = dataset.getCatIds(catNms)
-    print(catIds)
+    # print(catIds)
 
     imgIds = dataset.getImgIds(catIds)
-    print(imgIds)
+    # print(imgIds)
 
     img_info = dataset.loadImgs(imgIds)
-    print(img_info)
+    # print(img_info)
+
+    mask_info = dataset.loadMasks(imgIds)
+    print(mask_info)
