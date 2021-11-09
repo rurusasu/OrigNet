@@ -58,11 +58,11 @@ cfg.model = ""
 # 例: resnet18
 cfg.encoder_name = ""
 # 例: original
-cfg.model_dir = "data/model"
+cfg.model_dir = "model"
 # recorder
-cfg.record_dir = "data/record"
+cfg.record_dir = "record"
 # result
-cfg.result_dir = "data/result"
+cfg.result_dir = "result"
 # transfer or scratch
 cfg.train_type = "transfer"
 cfg.replaced_layer_num = 1  # 転移学習で置き換える全結合層の数
@@ -133,11 +133,9 @@ def parse_cfg(cfg, args):
     # assign the gpus
     os.environ["CUDA_VISIBLE_DEVICES"] = ", ".join([str(gpu) for gpu in cfg.gpus])
 
-    cfg.model_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir)
-    cfg.record_dir = os.path.join(
-        cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir
-    )
-    cfg.result_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, "result")
+    # cfg.model_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, cfg.model_dir)
+    # cfg.record_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, cfg.record_dir)
+    # cfg.result_dir = os.path.join(cfg.task, cfg.train.dataset, cfg.model, "result")
 
 
 def make_cfg(args):

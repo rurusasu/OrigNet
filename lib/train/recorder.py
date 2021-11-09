@@ -61,6 +61,15 @@ class Recorder(object):
         # images
         self.image_stats = defaultdict(object)
 
+    def VisualizeNetwork(self, network: torch.nn, inputs: torch.Tensor) -> None:
+        """TensorBoard 上でネットワークの構造を可視化するためのデータを作成するための関数．
+
+        Args:
+            network (torch.nn): 可視化したいモデル
+            inputs (torch.Tensor): モデルの構造を定義するための入力データ
+        """
+        self.writer.add_graph(network, inputs)
+
     def update_image_stats(self, image_stats: Dict) -> None:
         """
         Arg:

@@ -1,3 +1,4 @@
+import gc
 import os
 import sys
 import uuid
@@ -187,6 +188,8 @@ class OptunaTrainer(object):
 
         # 不要なオブジェクトを削除
         del self.network, self.trainer, self.optimizer, self.scheduler
+        gc.collect()
+        torch.cuda.empty_cache()
 
         # -------- #
         # Testing #

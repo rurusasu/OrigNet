@@ -260,23 +260,23 @@ if __name__ == "__main__":
     from lib.datasets.make_datasets import make_data_loader
     from lib.visualizers.segmentation import visualize
 
-    cfg = CfgNode()
-    cfg.task = "semantic_segm"
-    cfg.cls_names = ["laptop", "tv"]
-    cfg.img_width = 600
-    cfg.img_height = 200
-    cfg.train = CfgNode()
-    cfg.train.dataset = "COCO2017Val"
-    cfg.train.batch_size = 4
-    cfg.train.num_workers = 2
-    cfg.train.batch_sampler = ""
-    cfg.test = CfgNode()
-    cfg.test.dataset = "COCO2017Val"
-    cfg.test.batch_size = 4
-    cfg.test.num_workers = 2
-    cfg.test.batch_sampler = ""
+    conf = CfgNode()
+    conf.task = "semantic_segm"
+    conf.cls_names = ["laptop", "tv"]
+    conf.img_width = 600
+    conf.img_height = 200
+    conf.train = CfgNode()
+    conf.train.dataset = "COCO2017Val"
+    conf.train.batch_size = 4
+    conf.train.num_workers = 2
+    conf.train.batch_sampler = ""
+    conf.test = CfgNode()
+    conf.test.dataset = "COCO2017Val"
+    conf.test.batch_size = 4
+    conf.test.num_workers = 2
+    conf.test.batch_sampler = ""
 
-    dloader = make_data_loader(cfg, is_train=True)
+    dloader = make_data_loader(conf, is_train=True)
     batch_iter = iter(dloader)
     batch = next(batch_iter)
     img, mask = batch["img"], batch["target"]
