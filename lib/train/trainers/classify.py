@@ -29,6 +29,8 @@ class ClassifyNetworkWrapper(nn.Module):
         #  [1番目のクラス，1番目のクラス， ...batchの大きさ分繰り返し]]
         output = self.net(input)
 
+        assert not torch.isnan(output).any(), "tensor is NAN."
+
         # スカラステータス（）
         loss = 0
         image_stats = {}

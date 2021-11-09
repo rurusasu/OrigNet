@@ -169,6 +169,32 @@ def reduce_loss_stats(loss_stats: dict) -> dict:
     return reduced_losses
 
 
+def _TrainingPreProcessing():
+    """
+    訓練の前処理用関数
+
+    参考: [amp_recipe.ipynb](https://colab.research.google.com/github/pytorch/tutorials/blob/gh-pages/_downloads/19350f3746283d2a6e32a8e698f92dc4/amp_recipe.ipynb#scrollTo=pCpWeg5PF-dw)
+    """
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_max_memory_allocated()
+    torch.cuda.synchronize()
+
+
+def _TrainingPostProcessing():
+    """
+    訓練の後処理用関数
+
+    参考: [amp_recipe.ipynb](https://colab.research.google.com/github/pytorch/tutorials/blob/gh-pages/_downloads/19350f3746283d2a6e32a8e698f92dc4/amp_recipe.ipynb#scrollTo=pCpWeg5PF-dw)
+    """
+    torch.cuda.synchronize()
+    print(
+        "Max memory used by tensors = {} bytes".format(
+            torch.cuda.max_memory_allocated()
+        )
+    )
+
+
 def train(
     network: torch.nn,
     epoch: int,
@@ -202,8 +228,11 @@ def train(
     else:
         raise ValueError("batch_multiplier は int 型の 0 より大きい値を設定してください。")
 
+    _TrainingPreProcessing()
     with tqdm(total=len(data_loader), leave=True, desc="train") as pbar:
         for iteration, batch in enumerate(data_loader):
+            # optimizer の初期化
+            optimizer.zero_grad()
             t_iter_start = time.time()
             iteration += 1
             recorder.step += 1
@@ -211,14 +240,14 @@ def train(
             # --------------- #
             # training stage #
             # --------------- #
-            # optimizer の初期化
-            optimizer.zero_grad()
             # use_amp = True の場合，混合精度を用いて訓練する．
             # 演算を混合精度でキャスト
             with amp.autocast(enabled=use_amp):
-                # if self.use_amp:  # もし，混合精度を使用する場合．
                 input = batch["img"].cuda(device)
                 target = batch["target"].cuda(device)
+                if use_amp:  # もし，混合精度を使用する場合．
+                    input = input.to(torch.half)
+                    target = target.to(torch.half)
 
                 _, loss, loss_stats, image_stats = network(input, target)
 
@@ -270,6 +299,8 @@ def train(
             gc.collect()
             torch.cuda.empty_cache()
 
+    _TrainingPostProcessing()
+
 
 def val(
     network: torch.nn,
@@ -295,7 +326,8 @@ def val(
     Returns:
         [type]: [description]
     """
-    torch.cuda.empty_cache()
+    # 検証の前処理
+    _TrainingPostProcessing()
     network.eval()
     val_loss_stats = {}
     data_size = len(data_loader)
@@ -339,5 +371,7 @@ def val(
     del input, target, output, image_stats
     gc.collect()
     torch.cuda.empty_cache()
+    # 検証の後処理
+    _TrainingPostProcessing()
 
     return val_loss_stats["batch_loss"].cpu().detach().clone().numpy()

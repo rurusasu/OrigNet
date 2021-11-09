@@ -222,7 +222,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -242,7 +242,7 @@ if __name__ == "__main__":
         conf.img_width = 224
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
-        conf.use_amp = False  # 半精度で訓練するか
+        conf.use_amp = True  # 半精度で訓練するか
         conf.optuna = True
         conf.optuna_trials = 1
         conf.record_dir = "record"
