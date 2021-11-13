@@ -222,7 +222,7 @@ class CycleTrain(object):
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     if not debug:
         CycleTrain(cfg).main()
     else:
@@ -232,8 +232,8 @@ if __name__ == "__main__":
         conf = CN()
         conf.task = "classify"
         conf.network = "cnns"
-        conf.model = "res_18"
-        # conf.model = "inc_v3"
+        # conf.model = "res_18"
+        conf.model = "inc_v3"
         # conf.model = "vgg_11_bn"
         # conf.model = "inc_res_v2"
         conf.model_dir = "model"

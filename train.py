@@ -16,6 +16,7 @@ from lib.train.optimizers import make_optimizer
 from lib.train.trainers.make_trainer import make_trainer
 from lib.train.recorder import make_recorder
 from lib.utils.net_utils import load_model, save_model
+from lib.visualizers.NetVisualization import NetVisualization
 
 
 def train(cfg: CfgNode) -> None:
@@ -57,7 +58,12 @@ def train(cfg: CfgNode) -> None:
         network, optimizer, scheduler, recorder, cfg.model_dir, resume=cfg.resume
     )
 
-    _NetVisualization()
+    NetVisualization(
+        network=network,
+        recorder=recorder,
+        in_width=cfg.img_width,
+        in_height=cfg.img_height,
+    )
 
     for epoch in range(begin_epoch, cfg.train.epoch):
         recorder.epoch = epoch

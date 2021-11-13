@@ -14,13 +14,14 @@ from yacs.config import CfgNode
 from lib.config.config import pth, cfg
 from lib.datasets.make_datasets import make_data_loader
 from lib.models.make_network import make_network
-from test import test
 from lib.train.scheduler import make_lr_scheduler
 from lib.train.optimizers import make_optimizer
 from lib.train.trainers.make_trainer import make_trainer
 from lib.train.recorder import make_recorder
 from lib.utils.base_utils import CfgSave, OneTrainDir, OneTrainLogDir
 from lib.utils.net_utils import save_model
+from lib.visualizers.NetVisualization import NetVisualization
+from test import test
 
 
 class OptunaTrain(object):
@@ -139,6 +140,14 @@ class OptunaTrain(object):
             device_name="auto",
         )
         self.recorder = make_recorder(self.config)
+
+        # ネットワークの可視化
+        NetVisualization(
+            network=self.network,
+            recorder=self.recorder,
+            in_width=cfg.img_width,
+            in_height=cfg.img_height,
+        )
 
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
         self.optimizer = make_optimizer(self.config, self.network)

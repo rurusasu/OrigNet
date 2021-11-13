@@ -192,13 +192,6 @@ def _TrainingPostProcessing():
     torch.cuda.synchronize()
 
 
-def _NetVisualization(network, recorder, in_width, in_height):
-    # torch.tensor([C, H, W])
-    input = torch.zeros((1, 3, in_width, in_height), dtype=torch.float32)
-    recorder.VisualizeNetwork(network.module.net, input)
-    del input
-
-
 def train(
     network: torch.nn,
     epoch: int,
