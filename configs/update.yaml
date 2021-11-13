@@ -3,7 +3,7 @@
 
 - loop: 1
   network: "cnns"
-  model: "inc_res_v2"
+  model: "eff_b0"
   train_type: "transfer"
   replaced_layer_num: 1
   img_width: 299
@@ -11,14 +11,17 @@
   train:
     # dataset: "AngleDetectTrain_2"
     # dataset: "SampleTest"
+    batch_size: 24
     batch_sampler: ""
   val:
     # dataset: "AngleDetectTrain_2"
     # dataset: SampleTrain
+    batch_size: 24
     batch_sampler: ""
   test:
     # dataset: "AngleDetectTrain_2"
     # dataset: "SampleTrain"
+    batch_size: 24
     batch_sampler: ""
 - loop: 2
   network: "cnns"
