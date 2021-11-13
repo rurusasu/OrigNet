@@ -195,6 +195,13 @@ def _TrainingPostProcessing():
     )
 
 
+def _NetVisualization(network, recorder, in_width, in_height):
+    # torch.tensor([C, H, W])
+    input = torch.zeros((1, 3, in_width, in_height), dtype=torch.float32)
+    recorder.VisualizeNetwork(network.module.net, input)
+    del input
+
+
 def train(
     network: torch.nn,
     epoch: int,
@@ -287,10 +294,6 @@ def train(
                     recorder.update_image_stats(image_stats)
 
                 recorder.record("train")
-
-            # 最初のイテレーション数のみ、ネットワークの構造を保存する
-            if epoch == 0 and iteration == 1:
-                recorder.VisualizeNetwork(network.module.net, input)
 
             # 【PyTorch】不要になった計算グラフを削除してメモリを節約
             # REF: https://tma15.github.io/blog/2020/08/22/pytorch%E4%B8%8D%E8%A6%81%E3%81%AB%E3%81%AA%E3%81%A3%E3%81%9F%E8%A8%88%E7%AE%97%E3%82%B0%E3%83%A9%E3%83%95%E3%82%92%E5%89%8A%E9%99%A4%E3%81%97%E3%81%A6%E3%83%A1%E3%83%A2%E3%83%AA%E3%82%92%E7%AF%80%E7%B4%84/

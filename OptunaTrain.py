@@ -23,12 +23,12 @@ from lib.utils.base_utils import CfgSave, OneTrainDir, OneTrainLogDir
 from lib.utils.net_utils import save_model
 
 
-class OptunaTrainer(object):
+class OptunaTrain(object):
     def __init__(
         self,
         config: CfgNode,
     ) -> None:
-        super(OptunaTrainer, self).__init__()
+        super(OptunaTrain, self).__init__()
         self.config = config
         if "train" not in self.config:
             raise ("Required parameters `train` for OptinaTrainer are not set.")
@@ -61,7 +61,10 @@ class OptunaTrainer(object):
 
     def Train(self, root_dir: str = "."):
         """
-        optuna を使用した最適なハイパーパラメタの探索を行う関数．
+        optuna を使用した最適なハイパーパラメタの探索を行う関数．\\
+        REF: [optuna_doc](https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls) \\
+        REF: [sampler の seed 固定](https://qiita.com/c60evaporator/items/633575c37863d1d18335) \\
+        REF: [storage への変数の渡し方](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html)
 
         Args:
             update_root_dir (str] optional): 最適化中の訓練情報を保存するディレクトリの親ディレクトリのパス. Defaults to ".".
@@ -72,11 +75,7 @@ class OptunaTrainer(object):
         pruner = optuna.pruners.SuccessiveHalvingPruner(
             min_resource=1, reduction_factor=4, min_early_stopping_rate=0
         )
-        # sampler の seed 固定
-        # REF: https://qiita.com/c60evaporator/items/633575c37863d1d18335
-        # storage への変数の渡し方
-        # optuna_doc: https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html
-        # REF: https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls
+
         study = optuna.create_study(
             sampler=optuna.samplers.TPESampler(seed=42),
             pruner=pruner,
@@ -203,7 +202,7 @@ class OptunaTrainer(object):
 def main(config, root_dir: str = "."):
 
     # 訓練
-    opt = OptunaTrainer(config)
+    opt = OptunaTrain(config)
     opt.Train(root_dir=root_dir)
 
 

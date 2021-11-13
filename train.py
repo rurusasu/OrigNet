@@ -57,6 +57,8 @@ def train(cfg: CfgNode) -> None:
         network, optimizer, scheduler, recorder, cfg.model_dir, resume=cfg.resume
     )
 
+    _NetVisualization()
+
     for epoch in range(begin_epoch, cfg.train.epoch):
         recorder.epoch = epoch
         trainer.train(epoch, train_loader, optimizer, recorder)

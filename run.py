@@ -10,10 +10,10 @@ import numpy as np
 import torch
 from yacs.config import CfgNode
 
+from OptunaTrain import OptunaTrain
 from train import train
 from test import test
 from lib.config.config import pth, cfg
-from lib.train.trainers.OptunaTrainer import OptunaTrainer
 from lib.utils.base_utils import CfgSave, DirCheckAndMake, OneTrainDir, OneTrainLogDir
 
 seed = 2021
@@ -117,7 +117,7 @@ class CycleTrain(object):
                 )
             # パラメタ探索のため，追加学習を無効にする．
             self.config.resume = False
-            self.opt_train = OptunaTrainer(self.config)
+            self.opt_train = OptunaTrain(self.config)
 
         self.iter_num = 1
 
@@ -227,6 +227,7 @@ if __name__ == "__main__":
         CycleTrain(cfg).main()
     else:
         from yacs.config import CfgNode as CN
+        batch_size = 40
 
         conf = CN()
         conf.task = "classify"
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         conf.img_width = 224
         conf.img_height = 224
         conf.resume = True  # 追加学習するか
-        conf.use_amp = True  # 半精度で訓練するか
+        conf.use_amp = False  # 半精度で訓練するか
         conf.optuna = True
         conf.optuna_trials = 1
         conf.record_dir = "record"
@@ -254,7 +255,7 @@ if __name__ == "__main__":
         conf.train.epoch = 1
         conf.train.dataset = "SampleTrain"
         # conf.train.dataset = "AngleDetectTrain_2"
-        conf.train.batch_size = 20
+        conf.train.batch_size = batch_size
         conf.train.num_workers = 2
         conf.train.batch_sampler = ""
         conf.train.optim = "adam"
@@ -274,7 +275,7 @@ if __name__ == "__main__":
         conf.test = CN()
         # conf.test.dataset = "AngleDetectVal_2"
         conf.test.dataset = "SampleTest"
-        conf.test.batch_size = 20
+        conf.test.batch_size = batch_size
         conf.test.num_workers = 2
         conf.test.batch_sampler = ""
 
