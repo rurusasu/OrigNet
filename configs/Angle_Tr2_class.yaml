@@ -1,10 +1,10 @@
 task: "classify"
 network: "cnns"
-model: "alex"
+model: "inc_v3"
 model_dir: "model"
 train_type: "transfer"  # or scratch
-img_width: 227
-img_height: 227
+img_width: 299
+img_height: 299
 resume: True  # 追加学習するか
 use_amp: False  # 半精度で訓練するか
 optuna: True  # optuna を使用して最適化するか
@@ -17,7 +17,7 @@ eval_ep: 1
 train:
   epoch: 10
   dataset: "AngleDetectTrain_2"
-  batch_size: 24
+  batch_size: 16
   num_workers: 4
   batch_sampler: ""
   optim: "adam"
@@ -30,11 +30,11 @@ train:
   gamma: 0.5
 val:
   dataset: "AngleDetectTrain_2"
-  batch_size: 24
+  batch_size: 16
   num_workers: 4
   batch_sampler: ""
 test:
   dataset: "AngleDetectTrain_2"
-  batch_size: 24
+  batch_size: 16
   num_workers: 2
   batch_sampler: ""

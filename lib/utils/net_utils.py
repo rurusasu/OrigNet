@@ -177,7 +177,7 @@ def _TrainingPreProcessing():
     """
     gc.collect()
     torch.cuda.empty_cache()
-    torch.cuda.reset_max_memory_allocated()
+    # torch.cuda.reset_max_memory_allocated()
     torch.cuda.synchronize()
 
 
@@ -187,12 +187,9 @@ def _TrainingPostProcessing():
 
     参考: [amp_recipe.ipynb](https://colab.research.google.com/github/pytorch/tutorials/blob/gh-pages/_downloads/19350f3746283d2a6e32a8e698f92dc4/amp_recipe.ipynb#scrollTo=pCpWeg5PF-dw)
     """
+    gc.collect()
+    torch.cuda.empty_cache()
     torch.cuda.synchronize()
-    print(
-        "Max memory used by tensors = {} bytes".format(
-            torch.cuda.max_memory_allocated()
-        )
-    )
 
 
 def train(
