@@ -391,10 +391,10 @@ if __name__ == "__main__":
     sys.path.append("../../")
     from lib.config.config import pth
 
-    root = os.path.join(pth.DATA_DIR, "ARCdataset_png")
+    root = os.path.join(pth.DATA_DIR, "ARCdataset")
     json_fp = os.path.join(
         pth.DATA_DIR,
-        "ARCdataset_png",
+        "ARCdataset",
         "train",
         "annotations",
         "instances_train2017.json",

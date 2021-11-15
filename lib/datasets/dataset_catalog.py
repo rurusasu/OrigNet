@@ -37,6 +37,8 @@ class DatasetCatalog(object):
             "data_root": "AngleDetection",
             "split": "test",
         },
+        "ARCTrain": {"id": "ARC", "data_root": "ARCdataset", "split": "train"},
+        "ARCTest": {"id": "ARC", "data_root": "ARCdataset", "split": "test"},
         "BrakeRotorsTrain": {
             "id": "Brake",
             "data_root": "BrakeRotors/casting_data/train",

@@ -14,6 +14,7 @@ from torchvision import transforms
 from yacs.config import CfgNode
 
 from lib.config.config import pth
+from lib.utils.dataset_utils import ARCDataset
 
 
 def getClassName(classID: int, cats: dict):
@@ -24,6 +25,55 @@ def getClassName(classID: int, cats: dict):
 
 
 def FilterDataset(
+    data_root,
+    cls_names: Union[List[str], None] = None,
+    split: Literal["train", "val", "test"] = "train",
+):
+    """フィルタしたクラスのオブジェクトが映る画像をすべて読みだす関数
+
+    Args:
+        data_root (str): データセットの root ディレクトリ．
+        cls_names (Union(List[str], None), optional): 抽出するクラス名のリスト. Defaults to None.
+        split (Literal["train", "val", "test"], optional): 読みだすデータセットの種類（'train' or 'val', or 'test'）. Defaults to 'train'.
+
+    Returns:
+        [type]: [description]
+    """
+    # initialize COCO api for instance annotations
+    annFile = "{}/{}/annotations/instances_{}2017.json".format(data_root, split, split)
+    coco = ARCDataset(annFile)
+
+    images = []
+    if cls_names is not None:
+        # リスト内の個々のクラスに対してイテレートする
+        for className in cls_names:
+            # 与えられたカテゴリを含むすべての画像を取得する
+            catIds = coco.getCatIds(catNms=className)  # <- ann
+            imgIds = coco.getImgIds(catIds=catIds)  # <- ann
+            images += coco.loadImgs(imgIds)
+
+    else:
+        imgIds = coco.getImgIds()
+        images = coco.loadImgs(imgIds)
+
+    # del annFile, catIds, imgIds
+    # gc.collect()
+
+    # Now, filter out the repeated images
+    unique_images = []
+    for i in range(len(images)):
+        if images[i] not in unique_images:
+            unique_images.append(images[i])
+    # del images
+    # gc.collect()
+
+    random.shuffle(unique_images)
+    dataset_size = len(unique_images)
+
+    return unique_images, dataset_size, coco
+
+
+def FilterCOCODataset(
     data_root,
     cls_names: Union[List[str], None] = None,
     split: Literal["train", "val", "test"] = "train",
@@ -266,17 +316,19 @@ if __name__ == "__main__":
     conf.img_width = 600
     conf.img_height = 200
     conf.train = CfgNode()
-    conf.train.dataset = "COCO2017Val"
+    # conf.train.dataset = "COCO2017Val"
+    conf.train.dataset = "ARCTrain"
     conf.train.batch_size = 4
     conf.train.num_workers = 2
     conf.train.batch_sampler = ""
     conf.test = CfgNode()
-    conf.test.dataset = "COCO2017Val"
+    # conf.test.dataset = "COCO2017Val"
+    conf.test.dataset = "ARCTest"
     conf.test.batch_size = 4
     conf.test.num_workers = 2
     conf.test.batch_sampler = ""
 
-    dloader = make_data_loader(conf, is_train=True)
+    dloader = make_data_loader(conf, ds_category="train", is_distributed=True)
     batch_iter = iter(dloader)
     batch = next(batch_iter)
     img, mask = batch["img"], batch["target"]
