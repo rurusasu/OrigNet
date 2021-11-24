@@ -5,6 +5,8 @@ from distutils.dir_util import copy_tree
 from glob import glob
 from typing import Dict, List, Literal, Union
 
+from numpy.lib.arraysetops import isin
+
 sys.path.append("../../")
 
 import cv2
@@ -333,27 +335,37 @@ class ARCDataset(object):
             self.df = pd.read_json(self.f_json_pth, orient="record", lines=True)
             self.df = pd.json_normalize(self.df.to_dict("records"), sep="_")
 
-    def getCatIds(self, catNms: Union[str, List[str]]) -> List[int]:
+    def getCatIds(self, catNms: Union[None, str, List[str]] = None) -> List[int]:
         """
         カテゴリの名前 (str) を対応するラベルの値 ndarray[int] に変換する関数．
         例: "item10" -> ndarray([10], dtype=uint8)
 
         Args:
-            catNms (str): ARCDatasetのカテゴリ名．
+            catNms (Union[None, str, List[str]]):
+            ARCDatasetのカテゴリ名．
+            Noneの場合，すべてのカテゴリ名を読み出す．
+            default to None.
+
+        Raises:
+            ValueError: catNms should be given as `str` or `list` type.
 
         Returns:
-            (ndarray): ラベル値．
+            List[int]: ラベル値．
         """
-        if isinstance(catNms, str):
-            for l in range(len(ClassLabel)):
-                if ClassLabel[l]["name"] == catNms:
-                    items = [ClassLabel[l]["id"]]
+        if isinstance(catNms, None):
+            items = []
+            for i in range(len(ClassLabel)):
+                items.append(ClassLabel[i]["id"])
         elif isinstance(catNms, list):
             items = []
             for k in catNms:
-                for l in range(len(ClassLabel)):
-                    if ClassLabel[l]["name"] == k:
-                        items.append(ClassLabel[l]["id"])
+                for i in range(len(ClassLabel)):
+                    if ClassLabel[i]["name"] == k:
+                        items.append(ClassLabel[i]["id"])
+        elif isinstance(catNms, str):
+            for i in range(len(ClassLabel)):
+                if ClassLabel[i]["name"] == catNms:
+                    items = [ClassLabel[i]["id"]]
         else:
             raise ValueError("catNms should be given as `str` or `list` type.")
         return items
@@ -392,6 +404,69 @@ class ARCDataset(object):
         df = df.tolist()
         return df
 
+    def loadAnns(
+        self, annIds: Union[dict, List[Dict[str, str]]]
+    ) -> List[Dict[str, str]]:
+        """アノテーション情報を読み出して，list 形式で返す関数．
+
+        Args:
+            annIds (Union[dict, List[Dict[str, str]]]): 読み出したいアノテーション情報の番号(df の index 番号に相当)．
+
+        Raises:
+            ValueError: ValueError: annIds should be given as `dict` or `list` type.
+
+        Returns:
+            List[Dict[str, str]]: アノテーション情報のリスト．
+            {
+                "anno_file_name": filepath,
+                "category_id": int
+            }
+        """
+        if isinstance(annIds, dict):
+            items = self.df.query(f"anno_file_name in {annIds.values()}")
+        elif isinstance(annIds, list):
+            items = []
+            for annId in annIds:
+                df = self.df.loc[
+                    self.df.index[annId], ["anno_file_name", "category_id"]
+                ]
+                # df -> dict
+                items.append(df.to_dict())
+        else:
+            raise ValueError("annIds should be given as `dict` or `list` type.")
+
+        return items
+
+    def loadCats(self, catIds: Union[int, List[int]]) -> List[Dict[str, str]]:
+        """カテゴリの `name` と `id` をキーに持つ辞書を list 形式で返す関数．
+
+        Args:
+            catIds (Union[int, List[int]]): 読み出したいカテゴリの `id`
+
+        Raises:
+            ValueError: catIds should be given as `int` or `list` type
+
+        Returns:
+            List[Dict[str, str]]: カテゴリの `name` と `id` をキーに持つ辞書．
+            {
+                "name": str,
+                "id": int
+            }
+        """
+        if isinstance(catIds, int):
+            for i in range(len(ClassLabel)):
+                if ClassLabel[i]["id"] == catIds:
+                    items = [ClassLabel[i]]
+        elif isinstance(catIds, list):
+            items = []
+            for k in catIds:
+                for i in range(len(ClassLabel)):
+                    if ClassLabel[i]["id"] == k:
+                        items.append(ClassLabel[i])
+        else:
+            raise ValueError("catIds should be given as `int` or `list` type.")
+        return items
+
     def loadImgs(self, imgIds: List[int]) -> List[Dict[str, str]]:
         """
 
@@ -407,20 +482,6 @@ class ARCDataset(object):
         # REF: https://note.nkmk.me/python-pandas-to-dict/
         df = df.to_dict(orient="records")
         return df
-
-    def loadAnns(self, annIds: List[int]) -> List[Dict[str, str]]:
-        if isinstance(annIds, dict):
-            items = self.df.query(f"anno_file_name in {annIds.values()}")
-        elif isinstance(annIds, list):
-            items = []
-            for annId in annIds:
-                df = self.df.loc[self.df.index[annId], ["anno_file_name", "id"]]
-                # df -> dict
-                items.append(df.to_dict())
-        else:
-            raise ValueError("annIds should be given as `dict` or `list` type.")
-
-        return items
 
     def get_df(self):
         return self.df
@@ -477,19 +538,20 @@ def FilterARCDataset(
     return unique_images, dataset_size, coco
 
 
-def getARCNormalMask(imgObj, cls_names, coco, ann_dir, input_img_size):
+def getARCNormalMask(imgObj, cls_names, coco, catIds, ann_dir, input_img_size):
     annIds = coco.getAnnIds([imgObj["id"]])
     anns = coco.loadAnns(annIds)
 
+    cats = coco.loadCats(catIds)
     mask = np.zeros((input_img_size["h"], input_img_size["w"]))  # mask [H, W]
     for a in range(len(anns)):
-        # class =
-        # pixel_value = cls_names.index(className) + 1
+        className = getClassName(anns[a]["category_id"], cats)
+        pixel_value = cls_names.index(className) + 1
         pth = anns[a]["anno_file_name"]
         pth = os.path.join(ann_dir, pth)
         new_mask = cv2.imread(pth, flags=0)
         new_mask = cv2.resize(
-            new_mask,
+            new_mask * pixel_value,
             (input_img_size["w"], input_img_size["h"]),
         )
         mask = mask + new_mask

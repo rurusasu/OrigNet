@@ -149,7 +149,12 @@ class SegmentationDataset(data.Dataset):
                 )
             elif self.mask_type == "normal":
                 mask = getARCNormalMask(
-                    img_info, self.cls_names, self.coco, self.ann_dir, input_img_size
+                    img_info,
+                    self.cls_names,
+                    self.coco,
+                    self.catIds,
+                    self.ann_dir,
+                    input_img_size,
                 )
 
         # del img_info, input_img_size
@@ -182,7 +187,8 @@ if __name__ == "__main__":
     conf = CfgNode()
     conf.task = "semantic_segm"
     # conf.cls_names = ["laptop", "tv"]
-    conf.cls_names = ["item1", "item2"]
+    # conf.cls_names = ["item1", "item2"]
+    conf.cls_names = None
     conf.img_width = 400
     conf.img_height = 400
     conf.train = CfgNode()
