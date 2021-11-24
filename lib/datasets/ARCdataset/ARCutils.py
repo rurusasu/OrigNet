@@ -205,28 +205,35 @@ class ARCDatasetTransformer(object):
                     # pix_x, pix_y = np.where(seg_img > 0)  # 画素値 > 0 の位置を取得．
                     # 画素値の値を label に変換
                     # pv = seg_img[pix_x[0]][pix_y[0]]  # 1つの画素値を取得
-                    pv = seg_img.max()
-                    category_id = [
-                        v[0]
-                        for _, v in PixelValueToLabel.items()
-                        if np.allclose(v[0], pv)
-                    ][0]
+                    # pv = seg_img.max()
+                    # category_id = [
+                    #     v[0]
+                    #     for _, v in PixelValueToLabel.items()
+                    #     if np.allclose(v[0], pv)
+                    # ][0]
+
+                    """
+                    [Pythonのパスの最後の部分だけを手に入れる方法](https://www.fixes.pub/program/715603.html)
+                    """
+                    catIds = os.path.basename(os.path.normpath(seg_pth)).split("_")[-1]
+                    # 15.png -> 15
+                    catIds = os.path.splitext(catIds)[0]
 
                     # すべてのデータが揃っているか判定．
-                    if (image_id is not None) and (category_id is not None):
+                    if (image_id is not None) and (catIds is not None):
                         id += 1
                         # 画像情報 & アノテーション情報
                         source = {
                             "image_id": img_id,
                             "id": id,
                             "file_name": str(img_id) + ".png",
-                            "category_id": category_id.max().tolist(),
+                            "category_id": int(catIds),
                             "anno_file_name": seg_pth.replace(self.ds_pth + os.sep, ""),
                         }
 
                         WriteDataToNdjson(source, wt_json_pth)
                         # 不要な変数を削除
-                        del seg_img, pv
+                        del seg_img
 
     def _CreateContinuousLabelImage(
         self,
@@ -305,7 +312,7 @@ class ARCDatasetTransformer(object):
             # conlbl = np.delete(conlbl, axis=4)
             conlbl = conlbl[:, :, :3]
 
-        #  セグメンテーション領域内にオブジェクト同士が重なっている場所がある場合
+        # セグメンテーション領域内にオブジェクト同士が重なっている場所がある場合
         # その領域だけ，[255, 255, 255] の画素値を持つのでラベル変換の際にエラーが生じる．
         # そこで，[255, 255, 255] の画素値をその他のセグメンテーション領域の画素値と同じ値に置き換える．
         # REF: https://teratail.com/questions/100301
@@ -340,9 +347,7 @@ class ARCDatasetTransformer(object):
         # plt.show()
         # -------------------------------------
 
-        lbl_value = [
-            v[0] for _, v in PixelValueToLabel.items() if np.allclose(v[1], pv)
-        ][0]
+        # lbl_value = [v[0] for _, v in PixelValueToLabel.items() if np.allclose(v[1], pv)][0]
 
         # RGB Seg_img をグレー化
         conlbl = cv2.cvtColor(conlbl, cv2.COLOR_RGB2GRAY)
