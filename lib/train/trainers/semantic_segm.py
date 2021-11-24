@@ -28,24 +28,17 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         self.net = net
 
         # 損失関数 (criterion) を選択
-        if cfg.train.criterion == "DiceLoss":
-            self.criterion = smp.utils.losses.DiceLoss()
-        else:
-            self.criterion = nn.CrossEntropyLoss()
-
-        # 評価指標 (metrics) を選択
-        # self.metrics = make_metrics(cfg)
-        self.metrics = smp.utils.metrics.IoU()
+        self.criterion = make_metrics(cfg=cfg)
 
     def forward(self, input: torch.Tensor, target: torch.Tensor):
         output = self.net.forward(input)
         # スカラステータス（）
         loss = 0
-        iou = 0
+        # iou = 0
         image_stats = {}
         scalar_stats = {}
 
-        loss = self.criterion(output, target.long())
+        loss = self.criterion(output, target)
         # loss = F.cross_entropy(output, target, reduction="mean")
         # iou = self.metrics(output, target)
 

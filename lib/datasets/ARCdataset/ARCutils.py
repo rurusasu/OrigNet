@@ -1,8 +1,9 @@
 import os
-from distutils.dir_util import copy_tree
+import random
 import sys
+from distutils.dir_util import copy_tree
 from glob import glob
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Union
 
 sys.path.append("../../")
 
@@ -100,6 +101,15 @@ PixelValueToLabel = {
     ],
 }
 
+ClassLabel = [
+    {"name": "item1", "id": 1},
+    {"name": "item2", "id": 2},
+    {"name": "item3", "id": 3},
+    {"name": "item4", "id": 4},
+    {"name": "item5", "id": 5},
+    {"name": "item6", "id": 6},
+]
+
 
 class ARCDatasetTransformer(object):
     def __init__(
@@ -109,7 +119,9 @@ class ARCDatasetTransformer(object):
         self.ds_pth = os.path.join(data_root, split)
         self.img_dir_pth = os.path.join(self.ds_pth, "rgb")
         self.ann_dir_pth = os.path.join(self.ds_pth, "annotations")
-        self.ann_json_pth = os.path.join(self.ann_dir_pth, "instances_train2017.json")
+        self.ann_json_pth = os.path.join(
+            self.ann_dir_pth, "instances_{}2017.json".format(split)
+        )
         self.seg_img_root_dir = os.path.join(self.ds_pth, "seg_instance")
         self.seg_img_conlbl_dir = os.path.join(self.ds_pth, "temp")
 
@@ -172,7 +184,7 @@ class ARCDatasetTransformer(object):
                         source = {
                             "image_id": img_id,
                             "id": id,
-                            "img_file_name": str(img_id) + ".png",
+                            "file_name": str(img_id) + ".png",
                             "category_id": category_id.max().tolist(),
                             "anno_file_name": seg_pth.replace(self.ds_pth + os.sep, ""),
                         }
@@ -282,7 +294,8 @@ class ARCDatasetTransformer(object):
         pv, _ = stats.mode(x, axis=0)
 
         # 画素値を置き換え
-        conlbl[w_pix] = pv
+        # conlbl[w_pix] = pv
+        conlbl[w_pix] = 1
 
         # -------------------------------------
         # デバッグの際の画像表示用
@@ -320,7 +333,7 @@ class ARCDataset(object):
             self.df = pd.read_json(self.f_json_pth, orient="record", lines=True)
             self.df = pd.json_normalize(self.df.to_dict("records"), sep="_")
 
-    def getCatIds(self, catNms: str) -> np.ndarray:
+    def getCatIds(self, catNms: Union[str, List[str]]) -> List[int]:
         """
         カテゴリの名前 (str) を対応するラベルの値 ndarray[int] に変換する関数．
         例: "item10" -> ndarray([10], dtype=uint8)
@@ -331,40 +344,36 @@ class ARCDataset(object):
         Returns:
             (ndarray): ラベル値．
         """
-        return PixelValueToLabel[catNms][0]
+        if isinstance(catNms, str):
+            for l in range(len(ClassLabel)):
+                if ClassLabel[l]["name"] == catNms:
+                    items = [ClassLabel[l]["id"]]
+        elif isinstance(catNms, list):
+            items = []
+            for k in catNms:
+                for l in range(len(ClassLabel)):
+                    if ClassLabel[l]["name"] == k:
+                        items.append(ClassLabel[l]["id"])
+        else:
+            raise ValueError("catNms should be given as `str` or `list` type.")
+        return items
 
-    def getImgIds(self, catIds: np.ndarray) -> List[int]:
+    def getImgIds(self, catIds: List[int]) -> List[int]:
         """
-        ラベル値 ndarray[int] と一致するデータ番号 (id) のリストを返す関数．
+        ラベル値 List[int] と一致するデータ番号 (id) のリストを返す関数．
 
         Args:
             catIds (List[int]): ラベル値の ndarray 配列．
 
         Returns:
-            List[int]: データ番号 (id) のリスト．例: [1, 2, 3, ]
+            imgIds (List[int]): データ番号 (id) のリスト．例: [1, 2, 3, ]
         """
         # pandas.DataFrameの行を条件で抽出するquery
         # REF: https://note.nkmk.me/python-pandas-query/
         df = self.df.query(f"category_id in {catIds}")
         return df["id"].tolist()
 
-    def loadImgs(self, imgIds: List[int]) -> List[Dict[str, str]]:
-        """
-
-        Args:
-            imgIds (List[int]): [description]
-        """
-        # pandas.DataFrameの行を条件で抽出するquery
-        # REF: https://note.nkmk.me/python-pandas-query/
-        df = self.df.query(f"id in {imgIds}")
-
-        df = df[["img_file_name", "id"]]
-        # DataFrame -> Dict
-        # REF: https://note.nkmk.me/python-pandas-to-dict/
-        df = df.to_dict(orient="records")
-        return df
-
-    def loadMasks(self, imgIds: List[int]):
+    def getAnnIds(self, imgIds: List[int]) -> List[Dict[str, str]]:
         """画像に対応するマスク画像
 
         Args:
@@ -377,11 +386,135 @@ class ARCDataset(object):
         df = df[["anno_file_name"]]
         # DataFrame -> Dict
         # REF: https://note.nkmk.me/python-pandas-to-dict/
+        # df = df.to_dict(orient="records")
+        df = df["anno_file_name"].index.values
+        # ndarray -> list
+        df = df.tolist()
+        return df
+
+    def loadImgs(self, imgIds: List[int]) -> List[Dict[str, str]]:
+        """
+
+        Args:
+            imgIds (List[int]): [description]
+        """
+        # pandas.DataFrameの行を条件で抽出するquery
+        # REF: https://note.nkmk.me/python-pandas-query/
+        df = self.df.query(f"id in {imgIds}")
+
+        df = df[["file_name", "id"]]
+        # DataFrame -> Dict
+        # REF: https://note.nkmk.me/python-pandas-to-dict/
         df = df.to_dict(orient="records")
         return df
 
+    def loadAnns(self, annIds: List[int]) -> List[Dict[str, str]]:
+        if isinstance(annIds, dict):
+            items = self.df.query(f"anno_file_name in {annIds.values()}")
+        elif isinstance(annIds, list):
+            items = []
+            for annId in annIds:
+                df = self.df.loc[self.df.index[annId], ["anno_file_name", "id"]]
+                # df -> dict
+                items.append(df.to_dict())
+        else:
+            raise ValueError("annIds should be given as `dict` or `list` type.")
+
+        return items
+
     def get_df(self):
         return self.df
+
+
+def getClassName(classID: int, cats: dict):
+    for i in range(len(cats)):
+        if cats[i]["id"] == classID:
+            return cats[i]["name"]
+    return "None"
+
+
+def FilterARCDataset(
+    data_root,
+    cls_names: Union[List[str], None] = None,
+    split: Literal["train", "val", "test"] = "train",
+):
+    """フィルタリングしたクラスのオブジェクトが映る画像をすべて読みだす関数．
+
+    Args:
+        data_root (str): データセットの root ディレクトリ．
+        cls_names (Union(List[str], None), optional): 抽出するクラス名のリスト. Defaults to None.
+        split (Literal["train", "val", "test"], optional): 読みだすデータセットの種類（'train' or 'val', or 'test'）. Defaults to 'train'.
+
+    Returns:
+        [type]: [description]
+    """
+    # initialize COCO api for instance annotations
+    annFile = "{}/{}/annotations/instances_{}2017.json".format(data_root, split, split)
+    coco = ARCDataset(annFile)
+
+    images = []
+    if cls_names is not None:
+        # リスト内の個々のクラスに対してイテレートする
+        for className in cls_names:
+            # 与えられたカテゴリを含むすべての画像を取得する
+            catIds = coco.getCatIds(catNms=className)  # <- ann
+            imgIds = coco.getImgIds(catIds=catIds)  # <- ann
+            images += coco.loadImgs(imgIds)
+
+    else:
+        imgIds = coco.getImgIds()
+        images = coco.loadImgs(imgIds)
+
+    # Now, filter out the repeated images
+    unique_images = []
+    for i in range(len(images)):
+        if images[i] not in unique_images:
+            unique_images.append(images[i])
+
+    random.shuffle(unique_images)
+    dataset_size = len(unique_images)
+
+    return unique_images, dataset_size, coco
+
+
+def getARCNormalMask(imgObj, cls_names, coco, ann_dir, input_img_size):
+    annIds = coco.getAnnIds([imgObj["id"]])
+    anns = coco.loadAnns(annIds)
+
+    mask = np.zeros((input_img_size["h"], input_img_size["w"]))  # mask [H, W]
+    for a in range(len(anns)):
+        # class =
+        # pixel_value = cls_names.index(className) + 1
+        pth = anns[a]["anno_file_name"]
+        pth = os.path.join(ann_dir, pth)
+        new_mask = cv2.imread(pth, flags=0)
+        new_mask = cv2.resize(
+            new_mask,
+            (input_img_size["w"], input_img_size["h"]),
+        )
+        mask = mask + new_mask
+
+    return mask
+
+
+def getARCBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
+    annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
+    anns = coco.loadAnns(annIds)  # アノテーションを読みだす
+
+    mask = np.zeros(input_img_size)
+    for id in range(len(anns)):
+        new_mask = cv2.resize(coco.annToMask(anns[id]), input_img_size)
+
+        # Threshold because resizing may cause extraneous values
+        new_mask[new_mask >= 0.5] = 1
+        new_mask[new_mask < 0.5] = 0
+
+        # 画素の位置ごとの最大値を返す
+        mask = np.maximum(new_mask, mask)
+
+    # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
+    mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+    return mask
 
 
 if __name__ == "__main__":
@@ -400,6 +533,7 @@ if __name__ == "__main__":
         "instances_train2017.json",
     )
 
+    ds = ARCDatasetTransformer(root, split="test")
     ds = ARCDatasetTransformer(root, split="train")
     # ds.CreateSource(json_fp)
     # save_root_dir = os.path.join(pth.DATA_DIR, "test")
@@ -414,7 +548,8 @@ if __name__ == "__main__":
     df = dataset.get_df()
     # pprint.pprint(df)
 
-    catNms = "item1"
+    # catNms = "item1"
+    catNms = ["item1", "item2"]
     catIds = dataset.getCatIds(catNms)
     # print(catIds)
 
@@ -424,5 +559,5 @@ if __name__ == "__main__":
     img_info = dataset.loadImgs(imgIds)
     # print(img_info)
 
-    mask_info = dataset.loadMasks(imgIds)
+    mask_info = dataset.getAnnIds(imgIds)
     print(mask_info)
