@@ -38,6 +38,8 @@ class SemanticSegmentationNetworkWrapper(nn.Module):
         image_stats = {}
         scalar_stats = {}
 
+        print(target.min(), target.max())
+
         loss = self.criterion(output, target)
         # loss = F.cross_entropy(output, target, reduction="mean")
         # iou = self.metrics(output, target)

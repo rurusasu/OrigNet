@@ -5,9 +5,8 @@ from distutils.dir_util import copy_tree
 from glob import glob
 from typing import Dict, List, Literal, Union
 
-from numpy.lib.arraysetops import isin
-
 sys.path.append("../../")
+sys.path.append("../../../")
 
 import cv2
 import numpy as np
@@ -110,6 +109,40 @@ ClassLabel = [
     {"name": "item4", "id": 4},
     {"name": "item5", "id": 5},
     {"name": "item6", "id": 6},
+    {"name": "item7", "id": 7},
+    {"name": "item8", "id": 8},
+    {"name": "item9", "id": 9},
+    {"name": "item10", "id": 10},
+    {"name": "item11", "id": 11},
+    {"name": "item12", "id": 12},
+    {"name": "item13", "id": 13},
+    {"name": "item14", "id": 14},
+    {"name": "item15", "id": 15},
+    {"name": "item16", "id": 16},
+    {"name": "item17", "id": 17},
+    {"name": "item18", "id": 18},
+    {"name": "item19", "id": 19},
+    {"name": "item20", "id": 20},
+    {"name": "item21", "id": 21},
+    {"name": "item22", "id": 22},
+    {"name": "item23", "id": 23},
+    {"name": "item24", "id": 24},
+    {"name": "item25", "id": 25},
+    {"name": "item26", "id": 26},
+    {"name": "item27", "id": 27},
+    {"name": "item28", "id": 28},
+    {"name": "item29", "id": 29},
+    {"name": "item30", "id": 30},
+    {"name": "item31", "id": 31},
+    {"name": "item32", "id": 32},
+    {"name": "item33", "id": 33},
+    {"name": "item34", "id": 34},
+    {"name": "item35", "id": 35},
+    {"name": "item36", "id": 36},
+    {"name": "item37", "id": 37},
+    {"name": "item38", "id": 38},
+    {"name": "item39", "id": 39},
+    {"name": "item40", "id": 40},
 ]
 
 
@@ -296,8 +329,8 @@ class ARCDatasetTransformer(object):
         pv, _ = stats.mode(x, axis=0)
 
         # 画素値を置き換え
-        # conlbl[w_pix] = pv
-        conlbl[w_pix] = 1
+        conlbl[w_pix] = pv
+        # conlbl[w_pix] = 1
 
         # -------------------------------------
         # デバッグの際の画像表示用
@@ -314,7 +347,7 @@ class ARCDatasetTransformer(object):
         # RGB Seg_img をグレー化
         conlbl = cv2.cvtColor(conlbl, cv2.COLOR_RGB2GRAY)
         _, conlbl = cv2.threshold(conlbl, 1, 1, cv2.THRESH_BINARY)
-        conlbl = conlbl * lbl_value
+        # conlbl = conlbl * lbl_value
 
         return conlbl
 
@@ -352,7 +385,7 @@ class ARCDataset(object):
         Returns:
             List[int]: ラベル値．
         """
-        if isinstance(catNms, None):
+        if catNms is None:
             items = []
             for i in range(len(ClassLabel)):
                 items.append(ClassLabel[i]["id"])
@@ -370,19 +403,24 @@ class ARCDataset(object):
             raise ValueError("catNms should be given as `str` or `list` type.")
         return items
 
-    def getImgIds(self, catIds: List[int]) -> List[int]:
+    def getImgIds(self, catIds: Union[None, List[int]] = None) -> List[int]:
         """
-        ラベル値 List[int] と一致するデータ番号 (id) のリストを返す関数．
+        カテゴリid `List[int]` と一致するデータ番号 (id) のリストを返す関数．
 
         Args:
-            catIds (List[int]): ラベル値の ndarray 配列．
+            catIds (Union[None, List[int]], optional): 読み出したい画像のカテゴリid. Defaults to None.
 
         Returns:
-            imgIds (List[int]): データ番号 (id) のリスト．例: [1, 2, 3, ]
+            List[int]: データ番号 (id) のリスト．例: [1, 2, 3, ]
         """
-        # pandas.DataFrameの行を条件で抽出するquery
-        # REF: https://note.nkmk.me/python-pandas-query/
-        df = self.df.query(f"category_id in {catIds}")
+        if catIds is None:
+            df = self.df
+        elif isinstance(catIds, list):
+            # pandas.DataFrameの行を条件で抽出するquery
+            # REF: https://note.nkmk.me/python-pandas-query/
+            df = self.df.query(f"category_id in {catIds}")
+        else:
+            raise ValueError("catIds should be given as `None` or `list` type.")
         return df["id"].tolist()
 
     def getAnnIds(self, imgIds: List[int]) -> List[Dict[str, str]]:
@@ -550,6 +588,8 @@ def getARCNormalMask(imgObj, cls_names, coco, catIds, ann_dir, input_img_size):
         pth = anns[a]["anno_file_name"]
         pth = os.path.join(ann_dir, pth)
         new_mask = cv2.imread(pth, flags=0)
+        if np.max(new_mask) > 1:
+            raise ValueError("値が不正です．")
         new_mask = cv2.resize(
             new_mask * pixel_value,
             (input_img_size["w"], input_img_size["h"]),

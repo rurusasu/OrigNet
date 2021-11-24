@@ -1,6 +1,5 @@
 import os
 import sys
-import random
 from typing import Dict, List, Literal, Union
 
 sys.path.append("../../../")
@@ -187,8 +186,8 @@ if __name__ == "__main__":
     conf = CfgNode()
     conf.task = "semantic_segm"
     # conf.cls_names = ["laptop", "tv"]
-    # conf.cls_names = ["item1", "item2"]
-    conf.cls_names = None
+    conf.cls_names = ["item18", "item39"]
+    # conf.cls_names = None
     conf.img_width = 400
     conf.img_height = 400
     conf.train = CfgNode()
