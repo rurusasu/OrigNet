@@ -43,6 +43,8 @@ def train(cfg: CfgNode) -> None:
     elif cfg.task == "semantic_segm":
         # 理由は，画素値が 0 のラベルを与える必要があるため．
         cfg.num_classes = len(train_loader.dataset.cls_names) + 1
+    else:
+        raise ValueError("Choose either `classify` or `semantic_segm` for the task.")
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
     trainer = make_trainer(

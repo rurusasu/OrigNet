@@ -55,7 +55,10 @@ class OptunaTrain(object):
         elif self.config.task == "semantic_segm":
             # 理由は，画素値が 0 のラベルを与える必要があるため．
             self.config.num_classes = len(self.train_loader.dataset.cls_names) + 1
-
+        else:
+            raise ValueError(
+                "Choose either `classify` or `semantic_segm` for the task."
+            )
         self.mdl_dir = self.config.model_dir
         self.rec_dir = self.config.record_dir
         self.res_dir = self.config.result_dir

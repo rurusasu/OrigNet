@@ -9,20 +9,68 @@ import cv2
 import numpy as np
 import skimage.io as io
 import torch.utils.data as data
+from pycocotools.coco import COCO
 from torchvision import transforms
 from yacs.config import CfgNode
 
 from lib.config.config import pth
-from lib.datasets.ARCdataset.ARCutils import (
-    FilterARCDataset,
-    getARCBinaryMask,
-    getARCNormalMask,
-)
-from lib.datasets.COCOdataset.COCOutils import (
-    FilterCOCODataset,
-    getCOCOBinaryMask,
-    getCOCONormalMask,
-)
+
+
+def getClassName(classID: int, cats: dict):
+    for i in range(len(cats)):
+        if cats[i]["id"] == classID:
+            return cats[i]["name"]
+    return "None"
+
+
+def FilterCOCODataset(
+    data_root,
+    cls_names: Union[List[str], None] = None,
+    split: Literal["train", "val", "test"] = "train",
+):
+    """フィルタリングしたクラスのオブジェクトが映る画像をすべて読みだす関数
+
+    Args:
+        data_root (str): データセットの root ディレクトリ．
+        cls_names (Union(List[str], None), optional): 抽出するクラス名のリスト. Defaults to None.
+        split (Literal["train", "val", "test"], optional): 読みだすデータセットの種類（'train' or 'val' or 'test'). Defaults to 'train'.
+
+    Returns:
+        [type]: [description]
+    """
+    # initialize COCO api for instance annotations
+    # annFile = "{}/annotations/instances_{}2017.json".format(data_root, split)
+    annFile = "{}/{}/annotations/instances_{}2017.json".format(data_root, split, split)
+    coco = COCO(annFile)
+
+    images = []
+    if cls_names is not None:
+        # リスト内の個々のクラスに対してイテレートする
+        for className in cls_names:
+            # 与えられたカテゴリを含むすべての画像を取得する
+            catIds = coco.getCatIds(catNms=className)  # <- ann
+            imgIds = coco.getImgIds(catIds=catIds)  # <- ann
+            images += coco.loadImgs(imgIds)
+
+    else:
+        imgIds = coco.getImgIds()
+        images = coco.loadImgs(imgIds)
+
+    # del annFile, catIds, imgIds
+    # gc.collect()
+
+    # Now, filter out the repeated images
+    unique_images = []
+    for i in range(len(images)):
+        if images[i] not in unique_images:
+            unique_images.append(images[i])
+    # del images
+    # gc.collect()
+
+    random.shuffle(unique_images)
+    dataset_size = len(unique_images)
+
+    return unique_images, dataset_size, coco
 
 
 def getImage(imgObj, img_folder: str, input_img_size: Dict) -> np.ndarray:
@@ -37,6 +85,52 @@ def getImage(imgObj, img_folder: str, input_img_size: Dict) -> np.ndarray:
     else:  # 白黒の画像を扱う場合は、次元を3にする
         stacked_img = np.stack((img,) * 3, axis=-1)
         return stacked_img
+
+
+def getCOCONormalMask(imgObj, cls_names, coco, catIds, input_img_size):
+    annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
+    anns = coco.loadAnns(annIds)
+
+    cats = coco.loadCats(catIds)
+    mask = np.zeros((input_img_size["h"], input_img_size["w"]))  # mask [H, W]
+    class_names = []
+    for a in range(len(anns)):
+        className = getClassName(anns[a]["category_id"], cats)
+        pixel_value = cls_names.index(className) + 1
+        # ndarray [H, W] -> ndarray[H', W']
+        new_mask = cv2.resize(
+            coco.annToMask(anns[a]) * pixel_value,
+            (input_img_size["w"], input_img_size["h"]),
+        )
+        mask = np.maximum(new_mask, mask)
+        class_names.append(className)
+
+    # Add extra dimension for parity with train_img size [X * X * 3]
+    # mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+
+    # すべての
+    return mask, class_names
+
+
+def getCOCOBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
+    annIds = coco.getAnnIds(imgObj["id"], catIds=catIds, iscrowd=None)
+    anns = coco.loadAnns(annIds)  # アノテーションを読みだす
+
+    # train_mask = np.zeros(input_img_size)
+    mask = np.zeros(input_img_size)
+    for id in range(len(anns)):
+        new_mask = cv2.resize(coco.annToMask(anns[id]), input_img_size)
+
+        # Threshold because resizing may cause extraneous values
+        new_mask[new_mask >= 0.5] = 1
+        new_mask[new_mask < 0.5] = 0
+
+        # 画素の位置ごとの最大値を返す
+        mask = np.maximum(new_mask, mask)
+
+    # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
+    mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
+    return mask
 
 
 class SegmentationDataset(data.Dataset):
@@ -93,14 +187,9 @@ class SegmentationDataset(data.Dataset):
         # flickr_url: str, 例 http://farm1.staticflickr.com/21/30368166_92245cce3f_z.jpg
         # id: int 例 495776
         # }
-        if "COCO" in self.cfg.train.dataset or "COCO" in self.cfg.test.dataset:
-            self.imgs_info, self.dataset_size, self.coco = FilterCOCODataset(
-                self.data_root, self.cls_names, self.split
-            )
-        else:
-            self.imgs_info, self.dataset_size, self.coco = FilterARCDataset(
-                self.data_root, self.cls_names, self.split
-            )
+        self.imgs_info, self.dataset_size, self.coco = FilterCOCODataset(
+            self.data_root, self.cls_names, self.split
+        )
         self.catIds = self.coco.getCatIds(catNms=self.cls_names)
 
         # Data Augmentation
@@ -123,44 +212,20 @@ class SegmentationDataset(data.Dataset):
         input_img_size["w"] = width
         input_img_size["h"] = height
 
-        if "COCO" in self.cfg.train.dataset or "COCO" in self.cfg.test.dataset:
-            ### Retrieve Image ###
-            img = getImage(
-                imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
+        ### Retrieve Image ###
+        img = getImage(
+            imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
+        )
+        ### Create Mask ###
+        if self.mask_type == "binary":
+            mask = getCOCOBinaryMask(img_info, self.coco, self.catIds, input_img_size)
+        elif self.mask_type == "normal":
+            mask, class_names = getCOCONormalMask(
+                img_info, self.cls_names, self.coco, self.catIds, input_img_size
             )
-            ### Create Mask ###
-            if self.mask_type == "binary":
-                mask = getCOCOBinaryMask(
-                    img_info, self.coco, self.catIds, input_img_size
-                )
-            elif self.mask_type == "normal":
-                mask, class_names = getCOCONormalMask(
-                    img_info, self.cls_names, self.coco, self.catIds, input_img_size
-                )
-        else:
-            ### Retrieve Image ###
-            img = getImage(
-                imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
-            )
-            ### Create Mask ###
-            if self.mask_type == "binary":
-                mask = getARCBinaryMask(
-                    img_info, self.coco, self.catIds, input_img_size
-                )
-            elif self.mask_type == "normal":
-                mask = getARCNormalMask(
-                    img_info, self.cls_names, self.coco, self.ann_dir, input_img_size
-                )
-
-        # del img_info, input_img_size
-        # gc.collect()
 
         if self.transforms is not None:
             img, mask = self.transforms.augment(img=img, mask=mask, split=self.split)
-
-        # ndarray -> tensor
-        # img = torch.from_numpy(img.astype(np.float32)).clone()
-        # mask = torch.from_numpy(mask.astype(np.float32)).clone()
 
         ret = {
             "img": img,
@@ -181,19 +246,16 @@ if __name__ == "__main__":
 
     conf = CfgNode()
     conf.task = "semantic_segm"
-    # conf.cls_names = ["laptop", "tv"]
-    conf.cls_names = ["item1", "item2"]
+    conf.cls_names = ["laptop", "tv"]
     conf.img_width = 400
     conf.img_height = 400
     conf.train = CfgNode()
-    # conf.train.dataset = "COCO2017Val"
-    conf.train.dataset = "ARCTrain"
+    conf.train.dataset = "COCO2017Val"
     conf.train.batch_size = 4
     conf.train.num_workers = 1
     conf.train.batch_sampler = ""
     conf.test = CfgNode()
-    # conf.test.dataset = "COCO2017Val"
-    conf.test.dataset = "ARCTest"
+    conf.test.dataset = "COCO2017Val"
     conf.test.batch_size = 4
     conf.test.num_workers = 1
     conf.test.batch_sampler = ""

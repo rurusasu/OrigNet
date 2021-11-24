@@ -90,23 +90,19 @@ cfg.optuna_trials = 10
 # train
 # ---------------------
 cfg.train = CN()
-# dataset
+cfg.train.batch_size = 4
+cfg.train.batch_sampler = ""
+cfg.train.criterion = ""
 cfg.train.dataset = ""
 cfg.train.epoch = 140
-cfg.train.batch_size = 4
-cfg.train.num_workers = 2
-# image_size
-cfg.train.batch_sampler = ""
-cfg.train.optim = "adam"
-cfg.train.criterion = ""
-cfg.train.lr = 1e-3
-cfg.train.scheduler = "step_lr"
-cfg.train.weight_decay = 0.0
-cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
-cfg.train.warp_iter = 5
 cfg.train.gamma = 0.5
-cfg.train.metrics = "iou"
-
+cfg.train.lr = 1e-3
+cfg.train.milestones = (20, 40, 60, 80, 100, 120, 160, 180, 200, 220)
+cfg.train.num_workers = 2
+cfg.train.optim = "adam"
+cfg.train.scheduler = "step_lr"
+cfg.train.warp_iter = 5
+cfg.train.weight_decay = 0.0
 # ---------------------
 # val
 # ---------------------

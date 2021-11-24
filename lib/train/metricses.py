@@ -5,10 +5,12 @@ sys.path.append("../../../")
 
 from yacs.config import CfgNode
 
-from lib.utils.metrics.iou import iou_score, dice_coef
+from lib.utils.metrics.CrossEntropyLoss import CrossEntropyLoss
+from lib.utils.metrics.dice import DiceLoss
+from lib.utils.metrics.iou import iou_score
 
 
-_metrics_factory = {"iou": iou_score, "dice": dice_coef}
+_metrics_factory = {"iou": iou_score, "dice": DiceLoss, "cel": CrossEntropyLoss}
 
 
 def make_metrics(cfg: CfgNode) -> object:
@@ -20,10 +22,10 @@ def make_metrics(cfg: CfgNode) -> object:
     Returns:
         : `utils.metrics` 内に保存された metrics class の内の1つ．
     """
-    if "train" not in cfg and "metrics" not in cfg.train:
-        raise ("The required parameter for `make_metrics` is not set.")
+    if "train" not in cfg and "criterion" not in cfg.train:
+        raise ("The required parameter `criterion` for `make_metrics` is not set.")
 
-    metrics = _metrics_factory[cfg.train.metrics]
+    metrics = _metrics_factory[cfg.train.criterion]()
     # metrics = metrics()
     return metrics
 
@@ -31,6 +33,6 @@ def make_metrics(cfg: CfgNode) -> object:
 if __name__ == "__main__":
     cfg = CfgNode()
     cfg.train = CfgNode()
-    cfg.train.metrics = "iou"
+    cfg.train.metrics = "cel"
 
     f = make_metrics(cfg)
