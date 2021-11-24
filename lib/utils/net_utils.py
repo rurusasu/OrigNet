@@ -266,6 +266,7 @@ def train(
             pbar.update()
 
             if iteration % 10 == 0 or iteration == (max_iter - 1):
+                """
                 lr = optimizer.param_groups[0]["lr"]
                 memory = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
                 training_state = "  ".join(
@@ -277,8 +278,8 @@ def train(
                     lr,
                     memory,
                 )
-                print(training_state)
-
+                # print(training_state)
+                """
                 # record loss_stats and image_dict
                 if image_stats:
                     recorder.update_image_stats(image_stats)
