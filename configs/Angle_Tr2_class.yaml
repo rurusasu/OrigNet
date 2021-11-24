@@ -1,6 +1,6 @@
 task: "classify"
 network: "cnns"
-model: "inc_v3"
+model: "vgg_16"
 model_dir: "model"
 train_type: "transfer"  # or scratch
 img_width: 299
@@ -17,7 +17,7 @@ eval_ep: 1
 train:
   epoch: 10
   dataset: "AngleDetectTrain_2"
-  batch_size: 16
+  batch_size: 24
   num_workers: 4
   batch_sampler: ""
   optim: "adam"
@@ -30,11 +30,11 @@ train:
   gamma: 0.5
 val:
   dataset: "AngleDetectTrain_2"
-  batch_size: 16
+  batch_size: 24
   num_workers: 4
   batch_sampler: ""
 test:
   dataset: "AngleDetectTrain_2"
-  batch_size: 16
+  batch_size: 24
   num_workers: 2
   batch_sampler: ""
