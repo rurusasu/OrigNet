@@ -2,7 +2,7 @@ import json
 import os
 import yaml
 from glob import glob
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import cv2
 import ndjson
@@ -26,19 +26,22 @@ file_ext = {
 }
 
 
-def Tensor2Ndarray3D(x: torch.Tensor) -> np.ndarray:
-    """
-    画像としての形を保ったまま `torch.Tensor` から `ndarray` に変換する関数．
+def CfgSave(config: CfgNode, save_dir: str) -> Any:
+    """CfgNode を yaml ファイルとして保存するための関数．
 
     Args:
-        x (torch.Tensor): 画像などの3次元配列 ([C, H, W])．
-
-    Returns:
-        np.ndarray: 画像などの3次元配列 ([H, W, C]).
+        config (CfgNode): 訓練の条件設定が保存された辞書．
+        save_dir (str): CfgNode を保存するための yaml ファイルのパス．
     """
-    x = x.detach().clone().cpu()
-    # Tensor[C, H, W] -> ndarray[H, W, C]
-    return x.numpy().transpose(1, 2, 0)
+    dic = {}
+    w_pth = os.path.join(save_dir, f"{config.task}_{config.model}.yaml")
+    # CfgNode -> Dict
+    # この変換をしない場合，不要な変数が YAML に保存される．
+    for k, v in config.items():
+        dic[k] = v
+
+    with open(w_pth, "w") as yf:
+        yaml.dump(dic, yf, default_flow_style=False)
 
 
 def DirCheckAndMake(dir_pth: str) -> str:
@@ -56,44 +59,17 @@ def DirCheckAndMake(dir_pth: str) -> str:
     return dir_pth
 
 
-def SelectDevice(max_gpu_num: int = 0):
-    """
-    CUDA GPU が使用できるかを判定し，使用できればその個数を取得，できなければ cpu を選択する関数．
-    GPU 情報の取得 および 個数のカウント方法 は以下のサイトを参照．
-    REF: https://note.nkmk.me/python-pytorch-cuda-is-available-device-count/
-    Arg:
-        max_gpu_num(int): 使用する GPU の最大個数．0 <= n <= max_gpu_count で指定する．Default to 0.
-
-    Returns:
-        device_name(str): 使用可能なデバイス名 ("cpu" or "cuda")．
-        num_devices(List[int]): 使用可能なデバイスの番号．
-        `device_name="cpu"` : `num_devices=[]`．
-        GPUが1つしか搭載されていない場合，`device_name="cuda"` : `num_devices=[0]`．
-        GPUが複数搭載されている場合，`device_name="cuda"` : `num_devices=[0, 1, ...]`.
-
-    """
-    if torch.cuda.is_available():  # GPU が使用可能な場合
-        num_devices = torch.cuda.device_count()
-        if num_devices == 1:  # GPU が1つしか搭載されていない場合
-            return "cuda", [0]
-        else:  # GPU が 2 つ以上搭載されている場合
-            gpu_num = []
-            for i in range(num_devices):
-                gpu_num.append(i)
-                if num_devices < max_gpu_num:
-                    break
-            return "cuda", gpu_num
-    else:  # GPU が使用不可
-        return "cpu", []
-
-
-def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
+def GetImgFpsAndLabels(data_root: str, cls_names: Union[List[str], None] = None,):
     """指定したディレクトリ内の画像ファイルパス(Image file paths)とクラスラベルの一覧を取得する関数．
 
     Arg:
         data_root (str): 画像データが格納された親フォルダ
+        cls_names (Union[List[str], None], optional):
+                読みだしたいクラス名のリスト.
+                `None` の場合，すべてのクラスを読みだす．
+                Defaults to None.
     Return:
-        classes (list): クラス名のリスト
+        classes (list): クラス名のリスト.
         class_to_idx (dict): クラス名と label_num を対応させる辞書を作成
         imgs (list): データパスと label_num を格納したタプルを作成．
                          例: [img_fp1, img_fp2, ...]
@@ -107,6 +83,9 @@ def GetImgFpsAndLabels(data_root: str, num_classes: int = -1):
     targets = []
     for i, p in tenumerate(glob(os.path.join(data_root, "*"))):
         cls_name = os.path.basename(p.rstrip(os.sep))
+        if cls_name not in cls_names and cls_names is not None:
+            continue
+
         # クラス名のリストを作成
         classes.append(cls_name)
         # クラス名と label_num を対応させる辞書を作成
@@ -167,9 +146,6 @@ def LoadImgAndResize(img_fp: str, input_img_size: Dict[int, int]) -> np.ndarray:
         return stacked_img
 
 
-# ----------------------
-# JSON ファイル関連
-# ----------------------
 def LoadNdjson(json_pth: str) -> Dict:
     """
     WriteDataToNdjson を使って保存した JSON ファイルからデータを読みだす関数．
@@ -187,6 +163,83 @@ def LoadNdjson(json_pth: str) -> Dict:
         data = ndjson.load(f)
 
     return data
+
+
+def OneTrainDir(root_dir: str = ".", dir_name: str = "default") -> str:
+    """
+    1回の訓練の全データを保存するディレクトリを作成する関数．
+    ディレクトリ名は，cfg.task で与えられる．
+
+    Args:
+        root_dir (str, optional): 親ディレクトリのパス．Default to ".".
+        dir_name (str, optional): 作成するディレクトリ名．Default to "default"．
+
+    """
+    dir_pth = os.path.join(root_dir, dir_name)
+    dir_pth = DirCheckAndMake(dir_pth)
+    return dir_pth
+
+
+def OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
+    """
+    1回の訓練と検証時のデータを保存する`model`，`record`，`result` ディレクトリを作成するための関数．
+
+    Args:
+        config (CfgNode): 訓練の条件設定が保存された辞書．
+        root_dir (str): 親ディレクトリのパス．
+    """
+
+    model_dir = DirCheckAndMake(os.path.join(root_dir, config.model_dir))
+    record_dir = DirCheckAndMake(os.path.join(root_dir, config.record_dir))
+    result_dir = DirCheckAndMake(os.path.join(root_dir, config.result_dir))
+
+    return [model_dir, record_dir, result_dir]
+
+
+def SelectDevice(max_gpu_num: int = 0):
+    """
+    CUDA GPU が使用できるかを判定し，使用できればその個数を取得，できなければ cpu を選択する関数．
+    GPU 情報の取得 および 個数のカウント方法 は以下のサイトを参照．
+    REF: https://note.nkmk.me/python-pytorch-cuda-is-available-device-count/
+    Arg:
+        max_gpu_num(int): 使用する GPU の最大個数．0 <= n <= max_gpu_count で指定する．Default to 0.
+
+    Returns:
+        device_name(str): 使用可能なデバイス名 ("cpu" or "cuda")．
+        num_devices(List[int]): 使用可能なデバイスの番号．
+        `device_name="cpu"` : `num_devices=[]`．
+        GPUが1つしか搭載されていない場合，`device_name="cuda"` : `num_devices=[0]`．
+        GPUが複数搭載されている場合，`device_name="cuda"` : `num_devices=[0, 1, ...]`.
+
+    """
+    if torch.cuda.is_available():  # GPU が使用可能な場合
+        num_devices = torch.cuda.device_count()
+        if num_devices == 1:  # GPU が1つしか搭載されていない場合
+            return "cuda", [0]
+        else:  # GPU が 2 つ以上搭載されている場合
+            gpu_num = []
+            for i in range(num_devices):
+                gpu_num.append(i)
+                if num_devices < max_gpu_num:
+                    break
+            return "cuda", gpu_num
+    else:  # GPU が使用不可
+        return "cpu", []
+
+
+def Tensor2Ndarray3D(x: torch.Tensor) -> np.ndarray:
+    """
+    画像としての形を保ったまま `torch.Tensor` から `ndarray` に変換する関数．
+
+    Args:
+        x (torch.Tensor): 画像などの3次元配列 ([C, H, W])．
+
+    Returns:
+        np.ndarray: 画像などの3次元配列 ([H, W, C]).
+    """
+    x = x.detach().clone().cpu()
+    # Tensor[C, H, W] -> ndarray[H, W, C]
+    return x.numpy().transpose(1, 2, 0)
 
 
 def WriteDataToJson(data: Dict, wt_json_pth: str):
@@ -228,55 +281,6 @@ def WriteDataToNdjson(data: Dict, wt_json_pth: str):
     with open(fp, "a") as f:
         writer = ndjson.writer(f)
         writer.writerow(data)
-
-
-def CfgSave(config: CfgNode, save_dir: str) -> Any:
-    """CfgNode を yaml ファイルとして保存するための関数．
-
-    Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        save_dir (str): CfgNode を保存するための yaml ファイルのパス．
-    """
-    dic = {}
-    w_pth = os.path.join(save_dir, f"{config.task}_{config.model}.yaml")
-    # CfgNode -> Dict
-    # この変換をしない場合，不要な変数が YAML に保存される．
-    for k, v in config.items():
-        dic[k] = v
-
-    with open(w_pth, "w") as yf:
-        yaml.dump(dic, yf, default_flow_style=False)
-
-
-def OneTrainLogDir(config: CfgNode, root_dir: str = ".") -> List[str]:
-    """
-    1回の訓練と検証時のデータを保存する`model`，`record`，`result` ディレクトリを作成するための関数．
-
-    Args:
-        config (CfgNode): 訓練の条件設定が保存された辞書．
-        root_dir (str): 親ディレクトリのパス．
-    """
-
-    model_dir = DirCheckAndMake(os.path.join(root_dir, config.model_dir))
-    record_dir = DirCheckAndMake(os.path.join(root_dir, config.record_dir))
-    result_dir = DirCheckAndMake(os.path.join(root_dir, config.result_dir))
-
-    return [model_dir, record_dir, result_dir]
-
-
-def OneTrainDir(root_dir: str = ".", dir_name: str = "default") -> str:
-    """
-    1回の訓練の全データを保存するディレクトリを作成する関数．
-    ディレクトリ名は，cfg.task で与えられる．
-
-    Args:
-        root_dir (str, optional): 親ディレクトリのパス．Default to ".".
-        dir_name (str, optional): 作成するディレクトリ名．Default to "default"．
-
-    """
-    dir_pth = os.path.join(root_dir, dir_name)
-    dir_pth = DirCheckAndMake(dir_pth)
-    return dir_pth
 
 
 if __name__ == "__main__":

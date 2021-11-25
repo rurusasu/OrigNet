@@ -45,9 +45,30 @@ class OptunaTrain(object):
 
         # 訓練と検証用のデータローダーを作成
         self.train_loader = make_data_loader(
-            self.config, ds_category="train", max_iter=self.config.ep_iter
+            dataset_name=self.config.train.dataset,
+            batch_size=self.config.train.batch_size,
+            batch_sampler=self.config.train.batch_sampler,
+            ds_category="train",
+            img_shape={
+                "width": self.config.img_width,
+                "height": self.config.img_height,
+            },
+            max_iter=self.config.ep_iter,
+            num_workers=self.config.train.num_workers,
+            task=self.config.task,
         )
-        self.val_loader = make_data_loader(self.config, ds_category="val")
+        self.val_loader = make_data_loader(
+            dataset_name=self.config.val.dataset,
+            batch_size=self.config.val.batch_size,
+            batch_sampler=self.config.val.batch_sampler,
+            ds_category="val",
+            img_shape={
+                "width": self.config.img_width,
+                "height": self.config.img_height,
+            },
+            num_workers=self.config.val.num_workers,
+            task=self.config.task,
+        )
 
         # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
         if self.config.task == "classify":
@@ -136,7 +157,15 @@ class OptunaTrain(object):
         self.config.record_dir = rec_dir
         self.config.result_dir = res_dir
 
-        self.network = make_network(self.config)
+        # self.network = make_network(self.config)
+        self.network = make_network(
+            model_name=self.config.model,
+            num_classes=self.config.num_classes,
+            network_name=self.config.network,
+            encoder_name=self.config.encoder_name,
+            replaced_layer_num=self.config.replaced_layer_num,
+            train_type=self.config.train_type,
+        )
         self.trainer = make_trainer(
             self.config,
             self.network,
@@ -145,12 +174,12 @@ class OptunaTrain(object):
         self.recorder = make_recorder(self.config)
 
         # ネットワークの可視化
-        NetVisualization(
-            network=self.network,
-            recorder=self.recorder,
-            in_width=cfg.img_width,
-            in_height=cfg.img_height,
-        )
+        # NetVisualization(
+        #     network=self.network,
+        #     recorder=self.recorder,
+        #     in_width=cfg.img_width,
+        #     in_height=cfg.img_height,
+        # )
 
         # optuna が選択した最適化関数名と学習率を基に，最適化関数を読みだす
         self.optimizer = make_optimizer(self.config, self.network)

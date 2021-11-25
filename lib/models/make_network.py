@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple
+from typing import Literal, Tuple
 
 sys.path.append(".")
 sys.path.append("..")
@@ -18,38 +18,74 @@ _network_factory = {
 }
 
 
-def make_network(cfg: CfgNode):
+def make_network(
+    model_name: str,
+    num_classes: int,
+    network_name: Literal["cnns", "smp"],
+    encoder_name: str,
+    replaced_layer_num: int = 1,
+    train_type: Literal["scratch", "transfer"] = "scratch",
+):
     """Network を読みだす関数
 
     Args:
-        cfg (CfgNode): `config` 情報が保存された辞書．
+        model_name (str): 読み出したいモデルの構造名．
+        num_classes (int): 出力数．
+        encoder_name (str): エンコーダに用いるモデル構造名．
+        replaced_layer_num (int, optional):
+            転移学習時にモデルのパラメタを初期化する層の番号.
+            出力層から1番目とカウント.
+            Default to 1.
+        train_type (Literal["scratch", "transfer"], optional):
+            訓練のタイプ.
+            `scratch`: 重みを初期化して読み出す．
+            `transfer`: 転移学習用のモデルを読み出す．
+            Defaults to "scratch".
+
+    Raises:
+        ValueError: The specified `model_name` does not exist.
+        ValueError: The `encoder_name` must be of type str.
+        ValueError: The `num_classes` must be of type int and `num_classes` > 0.
+        ValueError: For train_type, select scratch or transfer.
 
     Returns:
-        [type]: [description]
+        torch.nn: モデルの構造
     """
-    if "model" not in cfg:
-        raise ("Required parameters `model` for make_network are not set.")
-    if "network" not in cfg:
-        raise ("Required parameters `network` for make_network are not set.")
+    if network_name not in _network_factory:
+        raise ValueError(f"The specified {network_name} does not exist.")
 
-    net_name = cfg.network
-    get_network_fun = _network_factory[net_name]
-    network = get_network_fun(cfg)
+    if not isinstance(encoder_name, str) and encoder_name != "":
+        raise ValueError("The `encoder_name` must be of type str.")
 
-    if net_name == "cnns":
+    if not isinstance(num_classes, int) or num_classes < 1:
+        raise ValueError("The num_classes must be of type int and num_classes > 0.")
+
+    if train_type != "scratch" and train_type != "transfer":
+        raise ValueError("For train_type, select scratch or transfer.")
+
+    arch = {
+        "model_name": model_name,
+        "num_classes": num_classes,
+        "encoder_name": encoder_name,
+        "train_type": train_type,
+    }
+    get_network_fun = _network_factory[network_name]
+    network = get_network_fun(**arch)
+
+    if network_name == "cnns":
         # 転移学習の場合
-        if ("train_type" in cfg) and (cfg.train_type == "transfer"):
-            if "num_classes" not in cfg and cfg.num_classes < 1:
-                raise ("Required parameters `transfer` for make_network are not set.")
-            if "replaced_layer_num" not in cfg and cfg.replaced_layer_num < 1:
+        if train_type == "transfer":
+            if replaced_layer_num > 1:
+                network, _ = transfer_network(
+                    network=network,
+                    num_classes=num_classes,
+                    replaced_layer_num=replaced_layer_num,
+                )
+            else:
                 raise (
                     "Required parameters `replace_layer_num` for make_network are not set."
                 )
-
-            network, cfg.replaced_layer_num = transfer_network(
-                network, cfg.num_classes, cfg.replaced_layer_num
-            )
-    elif net_name == "smp":
+    elif network_name == "smp":
         pass
 
     return network

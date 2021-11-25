@@ -110,7 +110,9 @@ class Recorder(object):
                 v = v.view(b_size, -1, h, w)
 
             v = v.float() if v.dtype != torch.float32 else v
-            self.writer.add_image(pattern.format(k), vutils.make_grid(v), step)
+            self.writer.add_image(
+                pattern.format(k), vutils.make_grid(v, value_range=[0, 1]), step
+            )
 
         del loss_stats
 

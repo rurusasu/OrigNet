@@ -566,6 +566,11 @@ def FilterARCDataset(
             images += coco.loadImgs(imgIds)
 
     else:
+        cls_names = []
+        catIDs = coco.getCatIds()
+        cats = coco.loadCats(catIDs)
+        for catID in catIDs:
+            cls_names.append(getClassName(classID=catID, cats=cats))
         imgIds = coco.getImgIds()
         images = coco.loadImgs(imgIds)
 
@@ -578,7 +583,7 @@ def FilterARCDataset(
     random.shuffle(unique_images)
     dataset_size = len(unique_images)
 
-    return unique_images, dataset_size, coco
+    return unique_images, dataset_size, coco, cls_names
 
 
 def getARCNormalMask(imgObj, cls_names, coco, catIds, ann_dir, input_img_size):

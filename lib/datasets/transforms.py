@@ -6,8 +6,6 @@ import torch
 from torchvision import transforms
 from torchvision.transforms import Normalize
 
-from yacs.config import CfgNode
-
 
 def to_tensor(x, **kwargs):
     # ndarray([H, W, C]) -> torch.tensor([C, H, W])
@@ -29,21 +27,24 @@ class DataAugmentor(object):
 
     def __init__(
         self,
-        cfg: CfgNode,
         split: Literal["train", "val", "test"] = "train",
+        toTensor: bool = True,
+        normalization: bool = False,
     ) -> transforms:
         """
         データ拡張を行うクラス
 
         Args:
-            cfg (CfgNode): 訓練の条件設定が保存された辞書．
             split (Literal[, optional): どのデータセットを読みだすか.
             ["train", "val", "test"] の3つから選択可能．Defaults to "train".
+            toTensor (bool, optional): 入力を Tensor に変換する．
+            `False` の場合，`ndarray` で出力．default to True.
+            normalization (bool, optional): 入力を正規化する．defaults to False.
 
         Returns:
             transforms: データ拡張で使用するクラス．
         """
-        self.cfg = cfg
+        # self.cfg = cfg
 
         if (split == "train") | (split == "val") | (split == "test"):
             self.split = split
@@ -52,7 +53,12 @@ class DataAugmentor(object):
                 "The data supplied to `split` is invalid. `split` must be given as `train`, `val`, or `test`."
             )
 
-        self.transform = {}
+        self.transform = {"train": [], "val": [], "norm": []}
+        transforms = []
+        if toTensor:
+            transforms.append(albu.Lambda(image=to_tensor, mask=mask_to_tensor))
+
+        """
         # 訓練で使用するデータ拡張
         self.transform["train"] = albu.Compose(
             [
@@ -68,6 +74,15 @@ class DataAugmentor(object):
         self.transform["norm"] = transforms.Compose(
             [Normalize(mean=self.image_net["mean"], std=self.image_net["std"])]
         )
+        """
+
+        self.transform["train"] = albu.Compose(transforms)
+        self.transform["val"] = albu.Compose(transforms)
+
+        if normalization:
+            self.transform["norm"] = transforms.Compose(
+                [Normalize(mean=self.image_net["mean"], std=self.image_net["std"])]
+            )
 
     def augment(
         self,
@@ -107,22 +122,26 @@ class DataAugmentor(object):
             img, mask = sample["image"], []
 
         # 入力画像のみ標準化する．
-        # img = self.transform["norm"](img)
+        if self.transform["norm"]:
+            img = self.transform["norm"](img)
 
         return img, mask
 
 
 def make_transforms(
-    cfg: CfgNode,
     split: Literal["train", "val", "test"] = "train",
+    toTensor: bool = True,
+    normalization: bool = False,
 ) -> transforms:
     """データ拡張に使用する Transforms を作成する関数
     Args:
-        cfg (CfgNode): 訓練の条件設定が保存された辞書．
         split (Literal[, optional): どのデータセットを読みだすか.
-        ["train", "val", "test"] の3つから選択可能．Defaults to "train".
+        ["train", "val", "test"] の3つから選択可能．defaults to "train".
+        toTensor (bool, optional): torch.Tensor で出力する．
+        `False` の場合，`ndarray` で出力．default to True.
+        normalization (bool, optional): 入力を正規化する．defaults to False.
 
     Return:
         (object): データ変換に使用する関数群
     """
-    return DataAugmentor(cfg, split=split)
+    return DataAugmentor(split=split, toTensor=toTensor, normalization=normalization)

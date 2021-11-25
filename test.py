@@ -18,7 +18,15 @@ from lib.utils.net_utils import load_network
 
 def test(cfg: CfgNode) -> np.ndarray:
     # 検証用のデータローダーを作成
-    val_loader = make_data_loader(cfg, ds_category="test")
+    val_loader = make_data_loader(
+        dataset_name=cfg.test.dataset,
+        batch_size=cfg.test.batch_size,
+        batch_sampler=cfg.test.batch_sampler,
+        ds_category="test",
+        img_shape={"width": cfg.img_width, "height": cfg.img_height},
+        num_workers=cfg.test.num_workers,
+        task=cfg.task,
+    )
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":
@@ -26,7 +34,14 @@ def test(cfg: CfgNode) -> np.ndarray:
     elif cfg.task == "semantic_segm":
         # 理由は，画素値が 0 のラベルを与える必要があるため．
         cfg.num_classes = len(val_loader.dataset.cls_names) + 1
-    network = make_network(cfg)
+    network = make_network(
+        model_name=cfg.model,
+        num_classes=cfg.num_classes,
+        network_name=cfg.network,
+        encoder_name=cfg.encoder_name,
+        replaced_layer_num=cfg.replaced_layer_num,
+        train_type=cfg.train_type,
+    )
 
     trainer = make_trainer(cfg, network, device_name="auto")
     evaluator = make_evaluator(cfg, cls_names=val_loader.dataset.cls_names)

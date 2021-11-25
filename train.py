@@ -34,8 +34,25 @@ def train(cfg: CfgNode) -> None:
     torch.backends.cudnn.deterministic = True
     torch.multiprocessing.set_sharing_strategy("file_system")
     # 訓練と検証用のデータローダーを作成
-    train_loader = make_data_loader(cfg, ds_category="train", max_iter=cfg.ep_iter)
-    val_loader = make_data_loader(cfg, ds_category="val")
+    train_loader = make_data_loader(
+        dataset_name=cfg.train.dataset,
+        batch_size=cfg.train.batch_size,
+        batch_sampler=cfg.train.batch_sampler,
+        ds_category="train",
+        img_shape={"width": cfg.img_width, "height": cfg.img_height},
+        max_iter=cfg.ep_iter,
+        num_workers=cfg.train.num_workers,
+        task=cfg.task,
+    )
+    val_loader = make_data_loader(
+        dataset_name=cfg.val.dataset,
+        batch_size=cfg.val.batch_size,
+        batch_sampler=cfg.val.batch_sampler,
+        ds_category="val",
+        img_shape={"width": cfg.img_width, "height": cfg.img_height},
+        num_workers=cfg.val.num_workers,
+        task=cfg.task,
+    )
 
     # セマンティックセグメンテーションの場合，背景のクラスを追加しないと cross_entropy の計算でエラーが発生．
     if cfg.task == "classify":
@@ -47,6 +64,14 @@ def train(cfg: CfgNode) -> None:
         raise ValueError("Choose either `classify` or `semantic_segm` for the task.")
     # 指定した device 上でネットワークを生成
     network = make_network(cfg)
+    network = make_network(
+        model_name=cfg.model,
+        num_classes=cfg.num_classes,
+        network_name=cfg.network,
+        encoder_name=cfg.encoder_name,
+        replaced_layer_num=cfg.replaced_layer_num,
+        train_type=cfg.train_type,
+    )
     trainer = make_trainer(
         cfg,
         network,

@@ -1,8 +1,10 @@
 import sys
+from typing import Literal
 
 sys.path.append(".")
 sys.path.append("../../../")
 
+import torch
 from yacs.config import CfgNode
 
 from lib.models.smp.unetpp import GetUNetPP as get_unet_pp
@@ -10,20 +12,48 @@ from lib.models.smp.unetpp import GetUNetPP as get_unet_pp
 _network_factory = {"unetpp": get_unet_pp}
 
 
-def GetSemanticSegm(cfg: CfgNode):
-    if cfg.model not in _network_factory:
-        raise ValueError(f"The specified cfg.network={cfg.model} does not exist.")
+def GetSemanticSegm(
+    model_name: str,
+    num_classes: int,
+    encoder_name: str,
+    train_type: Literal["scratch", "transfer"] = "scratch",
+) -> torch.nn:
+    """
+    セマンティックセグメンテーション用のモデル構造を読み出す関数．
 
-    if "encoder_name" not in cfg and "num_classes" not in cfg:
-        raise ValueError(
-            "The required config parameter for `GetSemanticSegm` is not set."
-        )
+    Args:
+        model_name (str): 読み出したいモデルの構造名．
+        num_classes (int): 出力数．
+        encoder_name (str): エンコーダに用いるモデル構造名．
+        train_type (Literal["scratch", "transfer"], optional):
+            訓練のタイプ.
+            `scratch`: 重みを初期化して読み出す．
+            `transfer`: 転移学習用のモデルを読み出す．
+            Defaults to "scratch".
 
-    arch = cfg.model
+    Raises:
+        ValueError: The specified `model_name` does not exist.
+        ValueError: The `encoder_name` must be of type str.
+        ValueError: The `num_classes` must be of type int and `num_classes` > 0.
+        ValueError: For train_type, select scratch or transfer.
 
-    get_model = _network_factory[arch]
+    Returns:
+        torch.nn: モデルの構造
+    """
+    if model_name not in _network_factory:
+        raise ValueError(f"The specified {model_name} does not exist.")
 
-    model = get_model(encoder_name=cfg.encoder_name, num_classes=cfg.num_classes)
+    if not isinstance(encoder_name, str) and encoder_name != "":
+        raise ValueError("The `encoder_name` must be of type str.")
+
+    if not isinstance(num_classes, int) or num_classes < 1:
+        raise ValueError("The num_classes must be of type int and num_classes > 0.")
+
+    if train_type != "scratch" and train_type != "transfer":
+        raise ValueError("For train_type, select scratch or transfer.")
+
+    get_model = _network_factory[model_name]
+    model = get_model(encoder_name=encoder_name, num_classes=num_classes)
 
     return model
 

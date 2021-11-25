@@ -5,7 +5,7 @@ sys.path.append("..")
 sys.path.append("../../")
 sys.path.append("../../../")
 
-from typing import Dict, List, Literal, Type, Union
+from typing import Dict, List, Literal, Tuple, Type, Union
 
 import torch
 import torch.utils.data as data
@@ -32,13 +32,39 @@ class ClassifyDataset(data.Dataset):
 
     def __init__(
         self,
-        cfg: CfgNode,
         data_root: str,
+        cls_names: Union[List[str], None] = None,
         split: Literal["train", "val", "test"] = "train",
-        cls_names: List[str] = None,
+        img_shape: Dict[str, int] = {"width": 224, "height": 224},
+        mask_type: Literal["binary", "normal"] = "normal",
         transforms: Union[transforms.Compose, None] = None,
     ) -> None:
-        super(ClassifyDataset, self).__init__()
+        """分類タスクで使用するデータセットを読み出すクラスの初期化関数．
+
+        Args:
+            data_root (str): 親ディレクトリのパス．
+            cls_names (Union[List[str], None], optional):
+                読みだしたいクラス名のリスト. 現在は使用されていないダミー変数．
+                Defaults to None.
+            split (Literal[, optional):
+                どのデータセットを読みだすか.
+                ["train", "val", "test"] の3つから選択可能．
+                Defaults to "train".
+            img_shape (Dict[str, int], optional):
+                出力される画像のサイズ.
+                Defaults to {"width": 224, "height": 224}.
+            mask_type (Literal["binary", "normal"], optional):
+                "binary": すべてのオブジェクトを単一のクラスとしてマスクする．
+                "normal": オブジェクトをクラスごとにマスクする.
+                Defaults to "normal".
+            transforms (Union[transforms.Compose, None], optional):
+                データ拡張で使用するクラス．
+                Noneの場合は，データ拡張を行わない．
+                Defaults to None.
+
+        Raises:
+            FileExistsError: [description]
+        """
 
         self.file_ext = {
             ".jpg",
@@ -51,13 +77,15 @@ class ClassifyDataset(data.Dataset):
             ".tiff",
             ".webp",
         }
-        self.cfg = cfg
+        self.cls_names = cls_names
+        self.img_shape = img_shape
+        self.transforms = transforms
         self.split = split
         self.img_dir = os.path.join(pth.DATA_DIR, data_root, self.split)
 
         if not os.path.exists(self.img_dir) or not os.path.isdir(self.img_dir):
             raise FileExistsError(
-                f"The dataset to be used for {cfg.task} could not be read. The path is invalid."
+                f"The dataset to be used for {self.img_dir} could not be read. The path is invalid."
             )
 
         (
@@ -66,8 +94,7 @@ class ClassifyDataset(data.Dataset):
             self.img_fps,
             self.targets,
             _,
-        ) = GetImgFpsAndLabels(self.img_dir)
-        self.transforms = transforms
+        ) = GetImgFpsAndLabels(self.img_dir, cls_names=self.cls_names)
 
     def __getitem__(self, img_id: Type[Union[int, tuple]]) -> Dict:
         """
@@ -85,10 +112,9 @@ class ClassifyDataset(data.Dataset):
         """
         if type(img_id) is tuple:
             img_id, height, width = img_id
-        elif (
-            type(img_id) is int and "img_width" in self.cfg and "img_height" in self.cfg
-        ):
-            height, width = self.cfg.img_width, self.cfg.img_height
+        elif type(img_id) is int:
+            # height, width = self.cfg.img_width, self.cfg.img_height
+            width, height = self.img_shape["width"], self.img_shape["height"]
         else:
             raise TypeError("Invalid type for variable index")
 

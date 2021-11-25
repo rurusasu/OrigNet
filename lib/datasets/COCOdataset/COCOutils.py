@@ -8,12 +8,8 @@ sys.path.append("../../../")
 import cv2
 import numpy as np
 import skimage.io as io
-import torch.utils.data as data
 from pycocotools.coco import COCO
-from torchvision import transforms
 from yacs.config import CfgNode
-
-from lib.config.config import pth
 
 
 def getClassName(classID: int, cats: dict):
@@ -53,6 +49,11 @@ def FilterCOCODataset(
             images += coco.loadImgs(imgIds)
 
     else:
+        cls_names = []
+        catIDs = coco.getCatIds()
+        cats = coco.loadCats(catIDs)
+        for catID in catIDs:
+            cls_names.append(getClassName(classID=catID, cats=cats))
         imgIds = coco.getImgIds()
         images = coco.loadImgs(imgIds)
 
@@ -70,7 +71,7 @@ def FilterCOCODataset(
     random.shuffle(unique_images)
     dataset_size = len(unique_images)
 
-    return unique_images, dataset_size, coco
+    return unique_images, dataset_size, coco, cls_names
 
 
 def getImage(imgObj, img_folder: str, input_img_size: Dict) -> np.ndarray:
@@ -131,112 +132,6 @@ def getCOCOBinaryMask(imgObj, coco, catIds, input_img_size) -> np.ndarray:
     # パリティ用の追加次元をtrain_imgのサイズ[X * X * 3]で追加。
     mask = mask.reshape(input_img_size[0], input_img_size[1], 1)
     return mask
-
-
-class SegmentationDataset(data.Dataset):
-    def __init__(
-        self,
-        cfg: CfgNode,
-        data_root: str,
-        cls_names: Union[List[str], None] = None,
-        # input_img_size: tuple = (224, 224),
-        split: Literal["train", "val", "test"] = "train",
-        mask_type: Literal["binary", "normal"] = "normal",
-        transforms: Union[transforms.Compose, None] = None,
-    ):
-        """セマンティックセグメンテーションのタスクで使用するデータセットを読みだすクラスの初期化関数．
-
-        Args:
-            cfg (CfgNode): 訓練の条件設定が保存された辞書．
-            data_root (str): 親ディレクトリのパス．
-            cls_names (Union[List[str], None], optional): 読みだしたいクラス名のリスト.
-            `None` の場合，すべてのクラスを読みだす．Defaults to None.
-            split (Literal[, optional): どのデータセットを読みだすか.
-            ["train", "val", "test"] の3つから選択可能．Defaults to "train".
-            mask_type (Literal[, optional):
-            "binary": すべてのオブジェクトを単一のクラスとしてマスクする．
-            "normal": オブジェクトをクラスごとにマスクする
-            Defaults to "normal".
-            transforms (Union[transforms.Compose, None], optional): データ拡張で使用するクラス．
-            Noneの場合は，データ拡張を行わない．Defaults to None.
-
-        Raises:
-            FileExistsError: [description]
-        """
-        self.cfg = cfg
-        self.data_root = os.path.join(pth.DATA_DIR, data_root)
-        self.cls_names = cfg.cls_names
-        self.split = split
-        self.mask_type = mask_type
-
-        self.img_dir = os.path.join(self.data_root, self.split, "rgb")
-        self.ann_dir = os.path.join(self.data_root, self.split)
-
-        if not os.path.exists(self.img_dir) or not os.path.isdir(self.img_dir):
-            raise FileExistsError(
-                f"The dataset to be used for {cfg.task} could not be read. The path is invalid."
-            )
-
-        # imgs_info = {
-        # license: int,
-        # file_name: str, 例: 000000495776.jpg
-        # coco_url: str, 例: http://images.cocodataset.org/train2017/000000495776.jpg
-        # height: int, 例 375
-        # width: int, 例 500
-        # date_captured, 例 2013-11-24 07:55:36
-        # flickr_url: str, 例 http://farm1.staticflickr.com/21/30368166_92245cce3f_z.jpg
-        # id: int 例 495776
-        # }
-        self.imgs_info, self.dataset_size, self.coco = FilterCOCODataset(
-            self.data_root, self.cls_names, self.split
-        )
-        self.catIds = self.coco.getCatIds(catNms=self.cls_names)
-
-        # Data Augmentation
-        self.transforms = transforms
-
-    def __getitem__(self, img_id):
-        if type(img_id) is tuple:
-            img_id, height, width = img_id
-        elif (
-            type(img_id) is int and "img_width" in self.cfg and "img_height" in self.cfg
-        ):
-            width, height = self.cfg.img_width, self.cfg.img_height
-        else:
-            raise TypeError("Invalid type for variable index")
-
-        img_info = self.imgs_info[img_id]
-        del img_id
-
-        input_img_size = {}
-        input_img_size["w"] = width
-        input_img_size["h"] = height
-
-        ### Retrieve Image ###
-        img = getImage(
-            imgObj=img_info, img_folder=self.img_dir, input_img_size=input_img_size
-        )
-        ### Create Mask ###
-        if self.mask_type == "binary":
-            mask = getCOCOBinaryMask(img_info, self.coco, self.catIds, input_img_size)
-        elif self.mask_type == "normal":
-            mask, class_names = getCOCONormalMask(
-                img_info, self.cls_names, self.coco, self.catIds, input_img_size
-            )
-
-        if self.transforms is not None:
-            img, mask = self.transforms.augment(img=img, mask=mask, split=self.split)
-
-        ret = {
-            "img": img,
-            "target": mask,
-            "meta": self.split,
-            "cls_names": self.cls_names,
-        }
-        return ret
-
-    def __len__(self):
-        return self.dataset_size
 
 
 if __name__ == "__main__":

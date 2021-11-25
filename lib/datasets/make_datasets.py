@@ -1,5 +1,5 @@
 import sys
-from typing import Literal, Type, Union
+from typing import Dict, List, Literal, Type, Union
 from torch._C import TensorType
 
 sys.path.append(".")
@@ -21,21 +21,42 @@ _dataset_factory = {"classify": ClassifyDataset, "semantic_segm": SegmentationDa
 
 
 def make_dataset(
-    cfg: CfgNode,
+    # cfg: CfgNode,
     dataset_name: str,
+    cls_names: Union[List[str], None] = None,
+    task: Literal["classify", "semantic_segm"] = "classify",
+    img_shape: Dict[str, int] = {"width": 224, "height": 224},
+    mask_type: Literal["binary", "normal"] = "normal",
     transforms: Type[Union[None, TensorType]] = None,
 ):
     """
     `DatasetCatalog` から `dataset_name` を参照し，そこに保存されている情報をもとにデータセットを作成する関数
 
     Args:
-        cfg (CfgNode): `config` 情報が保存された辞書．
         dataset_name (str): ロードするデータセット名．
-        transforms (torchvision.transforms): データ拡張に使用するtorchvisionのクラス．default to None.
+        task (Literal["classify", "semantic_segm"], optional):
+            適応させるタスク．
+            Default to "classify".
+        img_shape (Dict[str, int], optionanl):
+            出力される画像のサイズ．
+            Default to {"width": 224, "height": 224}.
+        mask_type (Literal["binary", "normal"], optional):
+                "binary": すべてのオブジェクトを単一のクラスとしてマスクする．
+                "normal": オブジェクトをクラスごとにマスクする.
+                Defaults to "normal".
+        transforms (Type[Union[None, TensorType]]):
+            データ拡張に使用するtorchvisionのクラス．
+            Default to None.
     """
+    if task != "classify" and task != "semantic_segm":
+        raise ValueError("Invalid input for task.")
+
     args = DatasetCatalog.get(dataset_name)
-    dataset = _dataset_factory[cfg.task]
-    args["cfg"] = cfg
+    dataset = _dataset_factory[task]
+    args["cls_names"] = cls_names
+    args["img_shape"] = img_shape
+    args["mask_type"] = mask_type
+    # args["cfg"] = cfg
     del args["id"]
 
     # args["data_root"] = os.path.join(pth.DATA_DIR, args["data_root"])
@@ -103,21 +124,40 @@ def _worker_init_fn(worker_id):
 
 
 def make_data_loader(
-    cfg: CfgNode,
+    # cfg: CfgNode,
+    dataset_name: str,
+    batch_size: int = 16,
+    batch_sampler: Union[None, Literal["image_size"]] = None,
     ds_category: Literal["train", "val", "test"] = "train",
+    img_shape: Dict[str, int] = {"width": 224, "height": 224},
     is_distributed: bool = False,
-    transform: bool = True,
     max_iter: int = -1,
+    normalization: bool = False,
+    num_workers: int = 2,
+    task: Literal["classify", "semantic_segm"] = "classify",
+    toTensor: bool = True,
 ) -> torch.utils.data.DataLoader:
     """
     データローダーを作成する関数．
 
     Args:
-        cfg (CfgNode): `config` 情報が保存された辞書．
-        ds_category (Literal[, optional): 使用するデータセットのカテゴリ名．Defaults to "train".
-        is_distributed (bool, optional): データをシャッフルしたものをテストに使用するか．. Defaults to False.
-        transform (bool, optional): 画像変換を行うか．Falseの場合，
-        max_iter (int, optional): イテレーションの最大値. Defaults to -1.
+        dataset_name (str): ロードするデータセット名．
+        batch_size (int, optional): 1回の出力で読み出されるデータ数．
+        batch_sampler (Union[None, Literal["image_size"]], optional): データサンプリング用のプログラム．
+        default to None.
+        ds_category (Literal["train", "val", "test"], optional): 使用するデータセットのカテゴリ名．
+        defaults to "train".
+        img_shape (Dict[str, int], optionanl): 出力される画像のサイズ．
+        default to {"width": 224, "height": 224}.
+        is_distributed (bool, optional): データをシャッフルしたものをテストに使用するか．
+        defaults to False.
+        max_iter (int, optional): イテレーションの最大値. defaults to -1.
+        normalization (bool, optional): データを正規化する．default to Fales.
+        num_workers (int, optional): 使用する `cpu` のワーカー数．default to 2.
+        task (Literal["classify", "semantic_segm"], optional): 適応させるタスク．
+        default to "classify".
+        toTensor (bool, optional): torch.Tensor で出力する．
+        `False` の場合，`ndarray` で出力．default to True.
 
     Returns:
         torch.utils.data.DataLoader: [description]
@@ -126,68 +166,32 @@ def make_data_loader(
     # 訓練データセットの場合のコンフィグ #
     # --------------------------------------- #
     if ds_category == "train":
-        if (
-            "train" not in cfg
-            and "dataset" not in cfg.train
-            and "batch_size" not in cfg.train
-            and "num_workers" not in cfg.train
-            and "batch_sampler" not in cfg.train
-        ):
-            raise ("The required parameter for 'make_data_loader' has not been set.")
-        # ds_category = "train"
         drop_last = False
         shuffle = True
-        dataset_name = cfg.train.dataset
-        batch_size = cfg.train.batch_size
-        num_workers = cfg.train.num_workers
-        batch_sampler = cfg.train.batch_sampler
     # --------------------------------------- #
     # 検証データセットの場合のコンフィグ #
     # --------------------------------------- #
     elif ds_category == "val":
-        if (
-            "dataset" not in cfg.val
-            and "batch_size" not in cfg.val
-            and "num_workers" not in cfg.val
-            and "batch_sampler" not in cfg.val
-        ):
-            raise (
-                "Required parameter included in `val` of `make_data_loader` is not set."
-            )
-        # ds_category = "val"
         drop_last = False
-        dataset_name = cfg.val.dataset
-        batch_size = cfg.val.batch_size
-        num_workers = cfg.val.num_workers
-        batch_sampler = cfg.val.batch_sampler
         shuffle = True if is_distributed else False
     # ----------------------------------------- #
     # テストデータセットの場合のコンフィグ #
     # ----------------------------------------- #
     elif ds_category == "test":
-        if (
-            "dataset" not in cfg.test
-            and "batch_size" not in cfg.test
-            and "num_workers" not in cfg.test
-            and "batch_sampler" not in cfg.test
-        ):
-            raise (
-                "Required parameter included in `test` of `make_data_loader` is not set."
-            )
-        # ds_category = "test"
         drop_last = False
-        dataset_name = cfg.test.dataset
-        batch_size = cfg.test.batch_size
-        num_workers = cfg.test.num_workers
-        batch_sampler = cfg.test.batch_sampler
         shuffle = True if is_distributed else False
     else:
         raise ("The required parameter for `make_data_loader` has not been set.")
 
     # dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
 
-    transforms = make_transforms(cfg, ds_category)
-    dataset = make_dataset(cfg, dataset_name=dataset_name, transforms=transforms)
+    transforms = make_transforms(
+        ds_category, toTensor=toTensor, normalization=normalization
+    )
+    # dataset = make_dataset(cfg, dataset_name=dataset_name, transforms=transforms)
+    dataset = make_dataset(
+        dataset_name=dataset_name, task=task, img_shape=img_shape, transforms=transforms
+    )
     sampler = _make_data_sampler(dataset, shuffle)
     batch_sampler = _make_batch_data_sampler(
         sampler, batch_size, drop_last, max_iter, batch_sampler
