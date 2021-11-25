@@ -59,7 +59,10 @@ def DirCheckAndMake(dir_pth: str) -> str:
     return dir_pth
 
 
-def GetImgFpsAndLabels(data_root: str, cls_names: Union[List[str], None] = None,):
+def GetImgFpsAndLabels(
+    data_root: str,
+    cls_names: Union[List[str], None] = None,
+):
     """指定したディレクトリ内の画像ファイルパス(Image file paths)とクラスラベルの一覧を取得する関数．
 
     Arg:
@@ -83,8 +86,9 @@ def GetImgFpsAndLabels(data_root: str, cls_names: Union[List[str], None] = None,
     targets = []
     for i, p in tenumerate(glob(os.path.join(data_root, "*"))):
         cls_name = os.path.basename(p.rstrip(os.sep))
-        if cls_name not in cls_names and cls_names is not None:
-            continue
+        if cls_names is not None:
+            if cls_name not in cls_names:
+                continue
 
         # クラス名のリストを作成
         classes.append(cls_name)

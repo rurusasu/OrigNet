@@ -50,8 +50,6 @@ def GetCNN(
     Returns:
         torch.nn: CNN の構造
     """
-    if model_name not in _network_factory:
-        raise ValueError(f"The specified {model_name} does not exist.")
 
     if not isinstance(num_classes, int) or num_classes < 1:
         raise ValueError("The num_classes must be of type int and num_classes > 0.")
@@ -65,6 +63,8 @@ def GetCNN(
         model_num = str(arch[arch.find("_") + 1 :]) if "_" in arch else 0
         arch = arch[: arch.find("_")]
 
+    if arch not in _network_factory:
+        raise ValueError(f"The specified {arch} does not exist.")
     get_model = _network_factory[arch]
 
     # 転移学習を行う場合
