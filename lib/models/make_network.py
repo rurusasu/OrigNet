@@ -31,15 +31,14 @@ def make_network(cfg: CfgNode):
         raise ("Required parameters `model` for make_network are not set.")
     if "network" not in cfg:
         raise ("Required parameters `network` for make_network are not set.")
-    if "train_type" not in cfg:
-        raise ("Required parameters `train_type` for make_network are not set.")
 
     net_name = cfg.network
     get_network_fun = _network_factory[net_name]
     network = get_network_fun(cfg)
 
     if net_name == "cnns":
-        if cfg.train_type == "transfer":
+        # 転移学習の場合
+        if ("train_type" in cfg) and (cfg.train_type == "transfer"):
             if "num_classes" not in cfg and cfg.num_classes < 1:
                 raise ("Required parameters `transfer` for make_network are not set.")
             if "replaced_layer_num" not in cfg and cfg.replaced_layer_num < 1:

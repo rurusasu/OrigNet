@@ -43,6 +43,8 @@ class DataAugmentor(object):
         Returns:
             transforms: データ拡張で使用するクラス．
         """
+        self.cfg = cfg
+
         if (split == "train") | (split == "val") | (split == "test"):
             self.split = split
         else:
@@ -105,7 +107,7 @@ class DataAugmentor(object):
             img, mask = sample["image"], []
 
         # 入力画像のみ標準化する．
-        img = self.transform["norm"](img)
+        # img = self.transform["norm"](img)
 
         return img, mask
 

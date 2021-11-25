@@ -26,6 +26,21 @@ file_ext = {
 }
 
 
+def Tensor2Ndarray3D(x: torch.Tensor) -> np.ndarray:
+    """
+    画像としての形を保ったまま `torch.Tensor` から `ndarray` に変換する関数．
+
+    Args:
+        x (torch.Tensor): 画像などの3次元配列 ([C, H, W])．
+
+    Returns:
+        np.ndarray: 画像などの3次元配列 ([H, W, C]).
+    """
+    x = x.detach().clone().cpu()
+    # Tensor[C, H, W] -> ndarray[H, W, C]
+    return x.numpy().transpose(1, 2, 0)
+
+
 def DirCheckAndMake(dir_pth: str) -> str:
     """
     dir_pth の先のディレクトリが存在するかを判定し，存在しなければ作成する関数．

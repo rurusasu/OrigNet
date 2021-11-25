@@ -1,6 +1,7 @@
 import gc
 import os
 import time
+from typing import Union
 
 import numpy as np
 import torch
@@ -47,9 +48,24 @@ def load_model(
 
 
 def load_network(
-    network, model_dir, resume: bool = True, epoch: int = -1, strict: bool = True
-):
-    """ """
+    network: torch.nn,
+    model_dir: str,
+    resume: bool = True,
+    epoch: int = -1,
+    strict: bool = True,
+) -> Union[torch.nn.Module, int]:
+    """保存されたネットワークのパラメタを読みだす関数．
+
+    Args:
+        network (torch.nn): パラメタを代入するためのネットワーク構造
+        model_dir (str): パラメタの読み出し先．
+        resume (bool, optional): 追加学習のする/しない．False の場合 0 を返す. Defaults to True.
+        epoch (int, optional): 読みだすパラメタの訓練回数. Defaults to -1.
+        strict (bool, optional): [description]. Defaults to True.
+
+    Returns:
+        [type]: [description]
+    """
     if not resume:
         return 0
 

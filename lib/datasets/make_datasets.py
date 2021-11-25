@@ -106,6 +106,7 @@ def make_data_loader(
     cfg: CfgNode,
     ds_category: Literal["train", "val", "test"] = "train",
     is_distributed: bool = False,
+    transform: bool = True,
     max_iter: int = -1,
 ) -> torch.utils.data.DataLoader:
     """
@@ -115,6 +116,7 @@ def make_data_loader(
         cfg (CfgNode): `config` 情報が保存された辞書．
         ds_category (Literal[, optional): 使用するデータセットのカテゴリ名．Defaults to "train".
         is_distributed (bool, optional): データをシャッフルしたものをテストに使用するか．. Defaults to False.
+        transform (bool, optional): 画像変換を行うか．Falseの場合，
         max_iter (int, optional): イテレーションの最大値. Defaults to -1.
 
     Returns:
