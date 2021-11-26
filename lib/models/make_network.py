@@ -75,7 +75,7 @@ def make_network(
     if network_name == "cnns":
         # 転移学習の場合
         if train_type == "transfer":
-            if replaced_layer_num > 1:
+            if replaced_layer_num > 0:
                 network, _ = transfer_network(
                     network=network,
                     num_classes=num_classes,
@@ -164,15 +164,22 @@ def transfer_network(
 if __name__ == "__main__":
     cfg = CfgNode()
     cfg.train = CfgNode()
-    # cfg.network = "cnns"
-    # cfg.model = "res_152"
-    # cfg.train_type = "transfer"
-    cfg.network = "smp"
-    cfg.model = "unetpp"
+    cfg.network = "cnns"
+    cfg.model = "vgg_16"
+    cfg.train_type = "transfer"
+    cfg.replaced_layer_num = 3
+    # cfg.network = "smp"
+    # cfg.model = "unetpp"
     cfg.encoder_name = "efficientnet-b0"
     cfg.num_classes = 2
 
-    model = make_network(cfg)
+    model = make_network(
+        model_name=cfg.model,
+        num_classes=cfg.num_classes,
+        network_name=cfg.network,
+        encoder_name=cfg.encoder_name,
+        replaced_layer_num=cfg.replaced_layer_num,
+    )
+
     if cfg.network == "cnns":
-        for arc in model:
-            print(arc)
+        print(model)

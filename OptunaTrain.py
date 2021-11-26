@@ -224,18 +224,19 @@ class OptunaTrain(object):
 
         # Cfg 情報の保存
         CfgSave(self.config, train_dir)
-        self.trial_count += 1
-
-        # 不要なオブジェクトを削除
-        del self.network, self.trainer, self.optimizer, self.scheduler
-        gc.collect()
-        torch.cuda.empty_cache()
 
         # -------- #
         # Testing #
         # -------- #
         print("Test を実行します．")
         test(self.config)
+
+        self.trial_count += 1
+
+        # 不要なオブジェクトを削除
+        del self.network, self.trainer, self.optimizer, self.scheduler
+        gc.collect()
+        torch.cuda.empty_cache()
 
         return val_loss.item()
 

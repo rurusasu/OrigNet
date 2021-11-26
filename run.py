@@ -228,8 +228,8 @@ if __name__ == "__main__":
     else:
         from yacs.config import CfgNode as CN
 
-        CUDA_LAUNCH_BLOCKING = 1
-        batch_size = 8
+        # CUDA_LAUNCH_BLOCKING = 1
+        batch_size = 24
 
         conf = CN()
         conf.task = "classify"
@@ -238,7 +238,7 @@ if __name__ == "__main__":
         # conf.cls_names = ["laptop", "tv"]
         conf.network = "cnns"
         # conf.network = "smp"
-        conf.model = "res_18"
+        conf.model = "vgg_16"
         # conf.model = "inc_v3"
         # conf.model = "vgg_11_bn"
         # conf.model = "inc_res_v2"
@@ -253,7 +253,7 @@ if __name__ == "__main__":
         conf.resume = True  # 追加学習するか
         conf.use_amp = False  # 半精度で訓練するか
         conf.optuna = True
-        conf.optuna_trials = 1
+        conf.optuna_trials = 3
         conf.record_dir = "record"
         conf.ep_iter = -1
         conf.save_ep = 5
@@ -261,8 +261,8 @@ if __name__ == "__main__":
         conf.skip_eval = False
         conf.train = CN()
         conf.train.epoch = 1
-        conf.train.dataset = "SampleTrain"
-        # conf.train.dataset = "AngleDetectTrain_2"
+        # conf.train.dataset = "SampleTrain"
+        conf.train.dataset = "AngleDetectTrain_2"
         # conf.train.dataset = "COCO2017Val"
         # conf.train.dataset = "ARCTrain"
         conf.train.batch_size = batch_size
@@ -277,16 +277,16 @@ if __name__ == "__main__":
         conf.train.warp_iter = 10
         conf.train.gamma = 0.5
         conf.val = CN()
-        conf.val.dataset = "SampleTest"
-        # conf.val.dataset = "AngleDetectTrain_2"
+        # conf.val.dataset = "SampleTest"
+        conf.val.dataset = "AngleDetectVal_2"
         # conf.val.dataset = "COCO2017Val"
         # conf.val.dataset = "ARCTest"
         conf.val.batch_size = batch_size
         conf.val.num_workers = 2
         conf.val.batch_sampler = ""
         conf.test = CN()
-        conf.test.dataset = "SampleTest"
-        # conf.test.dataset = "AngleDetectVal_2"
+        # conf.test.dataset = "SampleTest"
+        conf.test.dataset = "AngleDetectVal_2"
         # conf.test.dataset = "COCO2017Val"
         # conf.test.dataset = "ARCTest"
         conf.test.batch_size = batch_size

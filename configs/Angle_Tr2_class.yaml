@@ -12,7 +12,7 @@ optuna_trials: 30
 record_dir: "record"
 ep_iter: -1
 save_ep: 5
-eval_ep: 1
+eval_ep: 5
 
 train:
   epoch: 10
@@ -29,12 +29,12 @@ train:
   warp_iter: 10  # 何 epoch ごとに lr を調整するか
   gamma: 0.5
 val:
-  dataset: "AngleDetectTrain_2"
+  dataset: "AngleDetectVal_2"
   batch_size: 24
   num_workers: 4
   batch_sampler: ""
 test:
-  dataset: "AngleDetectTrain_2"
+  dataset: "AngleDetectVal_2"
   batch_size: 24
-  num_workers: 2
+  num_workers: 4
   batch_sampler: ""
